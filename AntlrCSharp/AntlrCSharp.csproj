@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net7.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include=".antlr\tsqlBaseListener.cs" />
+    <Compile Include=".antlr\tsqlBaseVisitor.cs" />
+    <Compile Include=".antlr\tsqlLexer.cs" />
+    <Compile Include=".antlr\tsqlListener.cs" />
+    <Compile Include=".antlr\tsqlParser.cs" />
+    <Compile Include=".antlr\tsqlVisitor.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include=".antlr\tsql.interp" />
+    <None Include=".antlr\tsql.tokens" />
+    <None Include=".antlr\tsqlLexer.interp" />
+    <None Include=".antlr\tsqlLexer.tokens" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Antlr4.Runtime.Standard" Version="4.12.0" />
+  </ItemGroup>
+
+</Project>
