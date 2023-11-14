@@ -4,6 +4,7 @@ using System.Data.Common;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static Antlr4.Runtime.Atn.SemanticContext;
 using static System.Net.Mime.MediaTypeNames;
 
 namespace AntlrCSharp.analysis
@@ -19,6 +20,11 @@ namespace AntlrCSharp.analysis
         Boolean IsSargable();
     }
 
+    public interface INonSargableTokens
+    {
+        IEnumerable<ISargable> NonSargableTokens { get; }
+    }
+
     public interface IAliasable : ITokenText
     {
         String Alias { get; set; }
@@ -29,13 +35,15 @@ namespace AntlrCSharp.analysis
     public class SqlOperand : ISargable,ITokenText {
         public string TokenText { get; init; }
         public bool UsedFunction { get; init; } 
-        public SqlOperand(string tokenText, bool usedFunction) {
+        public bool IsConstant { get; init; }
+        public SqlOperand(string tokenText, bool usedFunction,bool isConstant) {
+            IsConstant = isConstant;
             UsedFunction = usedFunction;
             TokenText = tokenText;
         }
         public bool IsSargable()
         {
-            return (!UsedFunction);
+            return (IsConstant || !UsedFunction);
         }
 
         public override string ToString()
@@ -149,7 +157,7 @@ namespace AntlrCSharp.analysis
         
 
     }
-    public class SqlStatement: ISargable, ITokenText
+    public class SqlStatement: ISargable, ITokenText, INonSargableTokens
     {
         public String DbContext { get; init; } = "";
         public String TokenText { get; init; }
@@ -161,6 +169,27 @@ namespace AntlrCSharp.analysis
         public List<SqlColumn> Columns { get; } = new List<SqlColumn>();
 
         private IAliasable CurrentTarget { get; set; }
+
+        private readonly List<ISargable> _nonSargableTokens = new();
+        public IEnumerable<ISargable> NonSargableTokens 
+        {
+            get
+            {
+                if ( _nonSargableTokens.Count > 0) { return _nonSargableTokens; }
+                foreach (var predicate in Predicates)
+                {
+                    if (!predicate.IsSargable()) { _nonSargableTokens.Add(predicate); }
+                }
+
+                foreach (var subquery in Subqueries)
+                {
+                    if (!subquery.IsSargable()) { _nonSargableTokens.Add(subquery); }
+                }
+                return _nonSargableTokens;
+
+            }
+
+        }
 
         public SqlStatement(String tokenText)
         {
@@ -187,6 +216,8 @@ namespace AntlrCSharp.analysis
             }
             return true;
         }
+
+
 
         public void AddColumn(string tableName,string columnName,string tokenText )
         {

@@ -4,7 +4,7 @@ using static tsqlParser;
 using NN = System.Diagnostics.CodeAnalysis.NotNullAttribute;
 namespace AntlrCSharp.listeners
 {
-    internal class SqlListener: tsqlBaseListener
+    public class SqlListener: tsqlBaseListener
     {
         public String DB { get; set; } = "";
         public List<SqlStatement> Statements { get; } = new List<SqlStatement>();
@@ -15,8 +15,8 @@ namespace AntlrCSharp.listeners
         {
             _parser = parser;
         }
-
-    /*    public override void EnterEveryRule([NN] ParserRuleContext context)
+        /*
+        public override void EnterEveryRule([NN] ParserRuleContext context)
         {
             Console.WriteLine($"enter {_parser.RuleNames[context.RuleIndex]} - {context.GetText()}");
             base.EnterEveryRule(context);
@@ -28,11 +28,10 @@ namespace AntlrCSharp.listeners
             Console.WriteLine($"exit {_parser.RuleNames[context.RuleIndex]} - {context.GetText()}");
             base.ExitEveryRule(context);
 
-        }
-    */
+        }*/
+    
         public override void EnterTsql_file([NN] Tsql_fileContext context)
         {
-            Console.WriteLine("GOT HERE");
            // base.EnterTsql_file(context);
 
         }
@@ -40,8 +39,12 @@ namespace AntlrCSharp.listeners
 
         public override void EnterSql_clause([NN] Sql_clauseContext context)
         {
-            if(CurrentStatement is not null) { Statements.Add(CurrentStatement);}
             CurrentStatement = new SqlStatement(context.GetText());
+
+        }
+        public override void ExitSql_clause([NN] Sql_clauseContext context)
+        {
+            Statements.Add(CurrentStatement);
 
         }
         public override void EnterUse_statement([NN] tsqlParser.Use_statementContext context)
@@ -73,9 +76,10 @@ namespace AntlrCSharp.listeners
         public override void ExitSearch_cond_pred([NN] Search_cond_predContext context)
         {
             var child = context.GetChild(0);
-            if (child is null) {
+            if (child is null)
+            {
                 Console.WriteLine("Error in ExitSearch_cond_pred, no child");
-                return; 
+                return;
             }
             if (child is Binary_operator_expression2Context c)
             {
@@ -83,11 +87,25 @@ namespace AntlrCSharp.listeners
                 var right = c.right;
                 var op = c.op.GetText();
                 var rightText = right is null ? (op == "IS" ? "NULL" : "") : right.GetText();
-                var leftOp = new SqlOperand(left.GetText(), left is Function_call_expressionContext);
-                var rightOp = new SqlOperand(rightText, right is Function_call_expressionContext);
+                var leftOp = new SqlOperand(left.GetText(), left is Function_call_expressionContext, FunctionOverConstant(left));
+                var rightOp = new SqlOperand(rightText, right is Function_call_expressionContext, FunctionOverConstant(right));
                 CurrentStatement.AppendPredicate(new SqlPredicate(c.GetText(), leftOp, rightOp, op));
             }
+        }
+        private static bool FunctionOverConstant(ExpressionContext exp)
+        {
+            if (exp is null) { return false; }
+            if (exp.children.Count == 0) { return false; };
+            if (exp.children[0] is Standard_callContext sc)
+            {
+                if (sc.children.Count < 2) { return false; }
 
+                if (sc.children[2] is Expression_listContext elc)
+                {
+                    return elc.children[0] is Primitive_expressionContext;
+                }
+            }
+            return false;
         }
 
         public override void ExitTable_source_item_name([Antlr4.Runtime.Misc.NotNull] Table_source_item_nameContext context)
@@ -114,7 +132,6 @@ namespace AntlrCSharp.listeners
 
         public override void EnterSelect_list([NN] Select_listContext ctx)
         {
-            Console.WriteLine(ctx.Parent.GetText());
         }
 
     }
