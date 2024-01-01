@@ -7,7 +7,7 @@ using AntlrCSharp.listeners;
 try
 {
     
-    string input = "SELECT DISTINCT RTRIM(a.b) AS D, a.c FROM msdb.dbo.A AS a WHERE RTRIM(A.id) = '10' AND A.D = 20 OR A.D IS NULL \r\n SELECT a.b, a.c FROM dbo.A AS a WHERE A.id = 10 AND A.D = 20 OR A.D IS NULL ";
+    string input = "SELECT a.b AS D, a.c FROM msdb.dbo.A AS a WHERE A.id = CASE WHEN @x IS NULL THEN  '10' ELSE '20' END";
     AntlrInputStream inputStream = new AntlrInputStream(input);
     tsqlLexer tsqlLexer = new tsqlLexer(inputStream);
     CommonTokenStream commonTokenStream = new CommonTokenStream(tsqlLexer);

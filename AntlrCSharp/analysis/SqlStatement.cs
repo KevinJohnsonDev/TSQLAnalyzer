@@ -36,19 +36,25 @@ namespace AntlrCSharp.analysis
         public string TokenText { get; init; }
         public bool UsedFunction { get; init; } 
         public bool IsConstant { get; init; }
-        public SqlOperand(string tokenText, bool usedFunction,bool isConstant) {
+        
+        public bool InCaseStatement { get; init; }
+        public bool InWhere { get; init; }
+
+        public SqlOperand(string tokenText, bool usedFunction, bool isConstant, bool inWhere,bool inCaseStatement) {
             IsConstant = isConstant;
             UsedFunction = usedFunction;
             TokenText = tokenText;
+            InCaseStatement = inCaseStatement;
+            InWhere = inWhere;
         }
         public bool IsSargable()
         {
-            return (IsConstant || !UsedFunction);
+            return !(InWhere) || (!InCaseStatement && (IsConstant || !UsedFunction));
         }
 
         public override string ToString()
         {
-            return $"{TokenText} \n\t\tUsedFunction:{UsedFunction}";
+            return $"{TokenText} \n\tInWhere:{InWhere}\n\tInCaseStatement:{InCaseStatement}\n\tUsedFunction:{UsedFunction} \n\t\tUsedFunction:{UsedFunction}";
         }
     }
     public class SqlPredicate : ISargable, ITokenText
@@ -56,16 +62,19 @@ namespace AntlrCSharp.analysis
         public string TokenText { get; init; }
         public ISargable Left { get; set; }
 
+        public bool InWhere { get; init; }
+
         public string Op { get; set; }
 
         public ISargable Right { get; set; }
 
-        public SqlPredicate(String tokenText, ISargable left, ISargable right, String op  ) {
+        public SqlPredicate(String tokenText, ISargable left, ISargable right, String op, bool inWhere  ) {
             TokenText = tokenText; 
             Left = left;
             Right = right;
             Left = left;
             Op = op;
+            InWhere = inWhere;
         }
         public bool IsSargable()
         {

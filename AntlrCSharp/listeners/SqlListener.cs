@@ -1,5 +1,7 @@
 ﻿using Antlr4.Runtime;
+using Antlr4.Runtime.Tree;
 using AntlrCSharp.analysis;
+using System.Xml.Linq;
 using static tsqlParser;
 using NN = System.Diagnostics.CodeAnalysis.NotNullAttribute;
 namespace AntlrCSharp.listeners
@@ -7,6 +9,8 @@ namespace AntlrCSharp.listeners
     public class SqlListener: tsqlBaseListener
     {
         public String DB { get; set; } = "";
+        public bool _inWhere = false;
+        public bool _inCaseExpression = false;
         public List<SqlStatement> Statements { get; } = new List<SqlStatement>();
         private readonly Parser _parser;
         private SqlStatement CurrentStatement { get; set; }
@@ -15,7 +19,7 @@ namespace AntlrCSharp.listeners
         {
             _parser = parser;
         }
-        /*
+        
         public override void EnterEveryRule([NN] ParserRuleContext context)
         {
             Console.WriteLine($"enter {_parser.RuleNames[context.RuleIndex]} - {context.GetText()}");
@@ -23,12 +27,28 @@ namespace AntlrCSharp.listeners
 
 
         }
+
+        public override void EnterTable_sources([Antlr4.Runtime.Misc.NotNull] Table_sourcesContext context)
+        {
+            _inWhere = true;
+        }
+
+        public override void EnterDml_clause([Antlr4.Runtime.Misc.NotNull] Dml_clauseContext context)
+        {
+            _inWhere = true;
+        }
+
+        public override void ExitDml_clause([Antlr4.Runtime.Misc.NotNull] Dml_clauseContext context)
+        {
+            _inWhere = false;
+        }
+
         public override void ExitEveryRule([NN] ParserRuleContext context)
         {
             Console.WriteLine($"exit {_parser.RuleNames[context.RuleIndex]} - {context.GetText()}");
             base.ExitEveryRule(context);
 
-        }*/
+        }
     
         public override void EnterTsql_file([NN] Tsql_fileContext context)
         {
@@ -67,7 +87,16 @@ namespace AntlrCSharp.listeners
             if (context.column_alias() is not null) { CurrentStatement.AppendAlias(context.column_alias().GetText()); }
         } 
 
-  
+        public override void EnterCase_expression([NN]  Case_expressionContext context)
+        {
+            _inCaseExpression = true;
+        }
+
+        public override void ExitCase_expression([NN] Case_expressionContext context)
+        {
+            _inCaseExpression = false;
+        }
+
         public override void ExitQuery_specification([NN] Query_specificationContext context)
         {
             if (context.DISTINCT() != null) { CurrentStatement.UsesDistinct = true; }
@@ -87,11 +116,12 @@ namespace AntlrCSharp.listeners
                 var right = c.right;
                 var op = c.op.GetText();
                 var rightText = right is null ? (op == "IS" ? "NULL" : "") : right.GetText();
-                var leftOp = new SqlOperand(left.GetText(), left is Function_call_expressionContext, FunctionOverConstant(left));
-                var rightOp = new SqlOperand(rightText, right is Function_call_expressionContext, FunctionOverConstant(right));
-                CurrentStatement.AppendPredicate(new SqlPredicate(c.GetText(), leftOp, rightOp, op));
+                var leftOp = new SqlOperand(left.GetText(), left is Function_call_expressionContext, FunctionOverConstant(left),_inWhere,_inCaseExpression);
+                var rightOp = new SqlOperand(rightText, right is Function_call_expressionContext, FunctionOverConstant(right), _inWhere, _inCaseExpression);
+                CurrentStatement.AppendPredicate(new SqlPredicate(c.GetText(), leftOp, rightOp, op, _inWhere));
             }
         }
+
         private static bool FunctionOverConstant(ExpressionContext exp)
         {
             if (exp is null) { return false; }
@@ -104,6 +134,10 @@ namespace AntlrCSharp.listeners
                 {
                     return elc.children[0] is Primitive_expressionContext;
                 }
+            }
+            else if (exp is Primitive_expressionContext)
+            {
+                return true;
             }
             return false;
         }

@@ -55,6 +55,29 @@ public class SargabilityTests
         }
     }
 
+    [TestMethod]
+    public void CaseInWhereIsNotSargable()
+    {
+        string input = "SELECT a.b AS D, a.c FROM msdb.dbo.A AS a WHERE A.id = CASE WHEN @x IS NULL THEN  '10' ELSE '20' END ";
+        SqlListener listener = Init(input);
+        foreach (var statement in listener.Statements)
+        {
+            Console.WriteLine(statement);
+            Assert.IsFalse(statement.IsSargable());
+        }
+    }
+
+    public void FunctionInInClauseSargable()
+    {
+        string input = "SELECT a.b AS D, a.c FROM msdb.dbo.A AS a WHERE A.id IN (SELECT RTRIM(B.ID) AS ID FROM msdb.dbo.B AS B) ";
+        SqlListener listener = Init(input);
+        foreach (var statement in listener.Statements)
+        {
+            Console.WriteLine(statement);
+            Assert.IsFalse(statement.IsSargable());
+        }
+    }
+
     private static SqlListener Init(string input)
     {
         AntlrInputStream inputStream = new(input);
