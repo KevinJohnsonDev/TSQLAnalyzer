@@ -10,7 +10,8 @@ namespace AntlrCSharp.listeners
     {
         public String DB { get; set; } = "";
         public bool _inWhere = false;
-        public bool _inCaseExpression = false;
+        private int _caseExpressionDepth = 0;
+        private int _subqueryDepth = 0;
         public List<SqlStatement> Statements { get; } = new List<SqlStatement>();
         private readonly Parser _parser;
         private SqlStatement CurrentStatement { get; set; }
@@ -87,15 +88,10 @@ namespace AntlrCSharp.listeners
             if (context.column_alias() is not null) { CurrentStatement.AppendAlias(context.column_alias().GetText()); }
         } 
 
-        public override void EnterCase_expression([NN]  Case_expressionContext context)
-        {
-            _inCaseExpression = true;
-        }
-
-        public override void ExitCase_expression([NN] Case_expressionContext context)
-        {
-            _inCaseExpression = false;
-        }
+        public override void EnterCase_expression([NN]  Case_expressionContext context) => _caseExpressionDepth += 1;
+        public override void ExitCase_expression([NN] Case_expressionContext context) => _caseExpressionDepth -= 1;
+        public override void EnterSubquery([Antlr4.Runtime.Misc.NotNull] SubqueryContext context) => _subqueryDepth += 1;
+        public override void ExitSubquery([Antlr4.Runtime.Misc.NotNull] SubqueryContext context) => _subqueryDepth -= 1;
 
         public override void ExitQuery_specification([NN] Query_specificationContext context)
         {
@@ -116,10 +112,67 @@ namespace AntlrCSharp.listeners
                 var right = c.right;
                 var op = c.op.GetText();
                 var rightText = right is null ? (op == "IS" ? "NULL" : "") : right.GetText();
-                var leftOp = new SqlOperand(left.GetText(), left is Function_call_expressionContext, FunctionOverConstant(left),_inWhere,_inCaseExpression);
-                var rightOp = new SqlOperand(rightText, right is Function_call_expressionContext, FunctionOverConstant(right), _inWhere, _inCaseExpression);
+                var leftOp = new SqlOperand(left.GetText(), left is Function_call_expressionContext, FunctionOverConstant(left),_inWhere,_caseExpressionDepth > 0, _subqueryDepth > 0);
+                var rightOp = new SqlOperand(rightText, right is Function_call_expressionContext, FunctionOverConstant(right), _inWhere, _caseExpressionDepth > 0, _subqueryDepth > 0);
                 CurrentStatement.AppendPredicate(new SqlPredicate(c.GetText(), leftOp, rightOp, op, _inWhere));
             }
+            else if(child is Binary_in_expressionContext ec)
+            {
+                var left = ec.left;
+                var op = ec.op.Text;
+                var leftOp = new SqlOperand(left.GetText(), left is Function_call_expressionContext, FunctionOverConstant(left), _inWhere, _caseExpressionDepth > 0, _subqueryDepth > 0);
+                var sub = ec.subquery();
+                var allFunctionsOverConstant = true; //Yes Not Exhaustive Check yet
+                var subqueryFunctions = FindInstancesOfParentType<Function_call_expressionContext>(sub.children);
+                var hasSubqueryFunctions = subqueryFunctions.Length > 0;
+                if (subqueryFunctions.Length > 0)
+                {
+                    foreach(var fun in subqueryFunctions)
+                    {
+                        allFunctionsOverConstant = FunctionOverConstant(fun);
+                        if (!allFunctionsOverConstant) { break; }
+                    }
+                }
+                var rightOp = new SqlOperand(
+                    sub.GetText(),
+                    hasSubqueryFunctions,
+                    allFunctionsOverConstant,
+                    _inWhere,
+                    _caseExpressionDepth > 0,
+                    true
+                );
+
+                CurrentStatement.AppendPredicate(new SqlPredicate(ec.GetText(), leftOp, rightOp, op, _inWhere));
+
+
+            }
+        }
+
+        private TParentType[] FindInstancesOfParentType<TParentType>(IList<IParseTree> children)
+            where TParentType : class
+        {
+            List<TParentType> result = new List<TParentType>();
+            foreach (var item in children)
+            {
+                if(item is null) { continue; }
+                else if (item is TParentType tp) { result.Add(tp); }
+                else{ result.AddRange(FindInstancesOfParentType<TParentType>(item)); }
+            }
+            return result.ToArray();
+        }
+        private TParentType[] FindInstancesOfParentType<TParentType>(IParseTree children)
+            where TParentType : class
+        {
+            List<TParentType> result = new List<TParentType>();
+            var len = children.ChildCount;
+            for(int i = 0; i < len; i += 1)
+            {
+                var child = children.GetChild(i);
+                if(child is TerminalNodeImpl) { continue; }
+                else if (child is TParentType tp) { result.Add(tp); }
+                else { result.AddRange(FindInstancesOfParentType<TParentType>(child)); }
+            }
+            return result.ToArray();
         }
 
         private static bool FunctionOverConstant(ExpressionContext exp)
