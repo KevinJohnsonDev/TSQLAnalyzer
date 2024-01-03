@@ -15,9 +15,10 @@ namespace AntlrCSharp.analysis
     {
         String TokenText { get; init; }
     }
-    public interface ISargable
+    public interface ISargable : ITokenText
     {
         Boolean IsSargable();
+
     }
 
     public interface INonSargableTokens
