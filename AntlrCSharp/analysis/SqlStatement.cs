@@ -39,15 +39,18 @@ namespace AntlrCSharp.analysis
         
         public bool InCaseStatement { get; init; }
         public bool InWhere { get; init; }
-        public bool InSubquery { get; init; }
+        public bool InSubquery => SubQueryDepth > 0;
 
-        public SqlOperand(string tokenText, bool usedFunction, bool isConstant, bool inWhere,bool inCaseStatement,bool inSubquery) {
+
+        public int SubQueryDepth { get; init; }
+
+        public SqlOperand(string tokenText, bool usedFunction, bool isConstant, bool inWhere,bool inCaseStatement,int subqueryDepth) {
             IsConstant = isConstant;
             UsedFunction = usedFunction;
             TokenText = tokenText;
             InCaseStatement = inCaseStatement;
             InWhere = inWhere;
-            InSubquery = inSubquery;
+            SubQueryDepth = subqueryDepth;
         }
         public bool IsSargable()
         {

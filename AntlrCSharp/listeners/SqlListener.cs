@@ -112,15 +112,15 @@ namespace AntlrCSharp.listeners
                 var right = c.right;
                 var op = c.op.GetText();
                 var rightText = right is null ? (op == "IS" ? "NULL" : "") : right.GetText();
-                var leftOp = new SqlOperand(left.GetText(), left is Function_call_expressionContext, FunctionOverConstant(left),_inWhere,_caseExpressionDepth > 0, _subqueryDepth > 0);
-                var rightOp = new SqlOperand(rightText, right is Function_call_expressionContext, FunctionOverConstant(right), _inWhere, _caseExpressionDepth > 0, _subqueryDepth > 0);
+                var leftOp = new SqlOperand(left.GetText(), left is Function_call_expressionContext, FunctionOverConstant(left),_inWhere,_caseExpressionDepth > 0, _subqueryDepth);
+                var rightOp = new SqlOperand(rightText, right is Function_call_expressionContext, FunctionOverConstant(right), _inWhere, _caseExpressionDepth > 0, _subqueryDepth);
                 CurrentStatement.AppendPredicate(new SqlPredicate(c.GetText(), leftOp, rightOp, op, _inWhere));
             }
             else if(child is Binary_in_expressionContext ec)
             {
                 var left = ec.left;
                 var op = ec.op.Text;
-                var leftOp = new SqlOperand(left.GetText(), left is Function_call_expressionContext, FunctionOverConstant(left), _inWhere, _caseExpressionDepth > 0, _subqueryDepth > 0);
+                var leftOp = new SqlOperand(left.GetText(), left is Function_call_expressionContext, FunctionOverConstant(left), _inWhere, _caseExpressionDepth > 0, _subqueryDepth);
                 var sub = ec.subquery();
                 var allFunctionsOverConstant = true; //Yes Not Exhaustive Check yet
                 var subqueryFunctions = FindInstancesOfParentType<Function_call_expressionContext>(sub.children);
@@ -133,13 +133,20 @@ namespace AntlrCSharp.listeners
                         if (!allFunctionsOverConstant) { break; }
                     }
                 }
+
+                /* 
+                 * This is the right side of the IN Operator 
+                 * However by the time this rule is exited, the subquery has already been popped off as
+                 * So to compensate we add 1 to the depth
+                 */
+
                 var rightOp = new SqlOperand(
                     sub.GetText(),
                     hasSubqueryFunctions,
                     allFunctionsOverConstant,
                     _inWhere,
                     _caseExpressionDepth > 0,
-                    true
+                    _subqueryDepth 
                 );
 
                 CurrentStatement.AppendPredicate(new SqlPredicate(ec.GetText(), leftOp, rightOp, op, _inWhere));
