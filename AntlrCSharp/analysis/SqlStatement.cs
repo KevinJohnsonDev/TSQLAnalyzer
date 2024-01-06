@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Antlr4.Runtime;
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Linq;
@@ -14,6 +16,8 @@ namespace AntlrCSharp.analysis
     public interface ITokenText
     {
         String TokenText { get; init; }
+        int Start { get; init; }
+        int End { get; init; }
     }
     public interface ISargable : ITokenText
     {
@@ -31,10 +35,27 @@ namespace AntlrCSharp.analysis
         String Alias { get; set; }
         bool UsedAs { get; set; }
     }
-    
+
+    public class BaseToken: ITokenText
+    {
+        public String TokenText { get; init; }
+        public int Start { get; init; }
+        public int End { get; init; }
+
+        public BaseToken(string tokenText, int start, int end)
+        {
+            TokenText = tokenText;
+            Start = start;
+            End = end;
+        }
+    }
+
+
 
     public class SqlOperand : ISargable,ITokenText {
         public string TokenText { get; init; }
+        public int Start { get; init; }
+        public int End { get; init; }
         public bool UsedFunction { get; init; } 
         public bool IsConstant { get; init; }
         
@@ -45,10 +66,12 @@ namespace AntlrCSharp.analysis
 
         public int SubQueryDepth { get; init; }
 
-        public SqlOperand(string tokenText, bool usedFunction, bool isConstant, bool inWhere,bool inCaseStatement,int subqueryDepth) {
+        public SqlOperand(BaseToken token, bool usedFunction, bool isConstant, bool inWhere,bool inCaseStatement,int subqueryDepth) {
             IsConstant = isConstant;
             UsedFunction = usedFunction;
-            TokenText = tokenText;
+            TokenText = token.TokenText;
+            Start = token.Start;
+            End = token.End;
             InCaseStatement = inCaseStatement;
             InWhere = inWhere;
             SubQueryDepth = subqueryDepth;
@@ -70,6 +93,8 @@ namespace AntlrCSharp.analysis
     public class SqlPredicate : ISargable, ITokenText
     {
         public string TokenText { get; init; }
+        public int Start { get; init; }
+        public int End { get; init; }
         public ISargable Left { get; set; }
 
         public bool InWhere { get; init; }
@@ -78,8 +103,10 @@ namespace AntlrCSharp.analysis
 
         public ISargable Right { get; set; }
 
-        public SqlPredicate(String tokenText, ISargable left, ISargable right, String op, bool inWhere  ) {
-            TokenText = tokenText; 
+        public SqlPredicate(BaseToken token, ISargable left, ISargable right, String op, bool inWhere  ) {
+            TokenText = token.TokenText;
+            Start = token.Start;
+            End = token.End;
             Left = left;
             Right = right;
             Left = left;
@@ -100,25 +127,30 @@ namespace AntlrCSharp.analysis
     {
         public string Alias { get; set; } = "";
         public string TokenText { get; init; }
-
+        public int Start { get; init; }
+        public int End { get; init; }
         public bool UsedAs { get; set; }
         public string Database { get; init; }
         public string Schema { get; init; }
         public string TableName { get; init; }
 
-        public SqlTable(string database,string schema, string tableName, string tokenText) {
+        public SqlTable(BaseToken token, string database,string schema, string tableName) {
             Database = database;
             Schema = schema;
             TableName = tableName;
-            TokenText = tokenText; 
+            TokenText = token.TokenText;
+            Start = token.Start;
+            End = token.End;
         }
 
-        public SqlTable( string schema, string tableName, string tokenText)
+        public SqlTable(BaseToken token, string schema, string tableName)
         {
             Database = "";
             Schema = schema;
             TableName = tableName;
-            TokenText = tokenText;
+            TokenText = token.TokenText;
+            Start = token.Start;
+            End = token.End;
         }
 
         public override string ToString() => $" {TokenText}\n\tDatabase:{Database}\n\tSchema:{Schema}\n\tTableName:{TableName}\n\tAlias:{Alias}\n\tUsedAs:{UsedAs}";
@@ -155,6 +187,8 @@ namespace AntlrCSharp.analysis
     public class SqlColumn: ITokenText, IAliasable
     {
         public string TokenText { get; init; }
+        public int Start { get; init; }
+        public int End { get; init; }
         public string ColumnName { get; init; }
         public bool UsedAs { get; set; }
 
@@ -166,8 +200,10 @@ namespace AntlrCSharp.analysis
         /* This represents either the table OR the named table expression that this column references during parseTime */
         public string OwnerID { get; init; }
 
-        public SqlColumn(string ownerID, string columnName,string tokenText) { 
-            TokenText = tokenText;
+        public SqlColumn(BaseToken token,string ownerID, string columnName) {
+            TokenText = token.TokenText;
+            Start = token.Start;
+            End = token.End;
             ColumnName = columnName;
             OwnerID = ownerID;
         }
@@ -180,6 +216,8 @@ namespace AntlrCSharp.analysis
     {
         public String DbContext { get; init; } = "";
         public String TokenText { get; init; }
+        public int Start { get; init; }
+        public int End { get; init; }
         public Boolean UsesDistinct { get; set; }
         public  List<SqlPredicate> Predicates { get; } = new List<SqlPredicate>();
         public List<SqlStatement> Subqueries { get; } = new List<SqlStatement>();
@@ -210,15 +248,19 @@ namespace AntlrCSharp.analysis
 
         }
 
-        public SqlStatement(String tokenText)
+        public SqlStatement(BaseToken token )
         {
-            TokenText = tokenText;
+            TokenText = token.TokenText;
+            Start = token.Start;
+            End = token.End;
             UsesDistinct = false;
         }
-        public SqlStatement(String db, String tokenText, bool usesDistinct)
+        public SqlStatement(BaseToken token,String db, bool usesDistinct)
         {
+            TokenText = token.TokenText;
+            Start = token.Start;
+            End = token.End;
             DbContext = db;
-            TokenText = tokenText;
             UsesDistinct = usesDistinct;
         }
 
@@ -238,9 +280,9 @@ namespace AntlrCSharp.analysis
 
 
 
-        public void AddColumn(string tableName,string columnName,string tokenText )
+        public void AddColumn(BaseToken token,string tableName,string columnName )
         {
-            var col = new SqlColumn(tableName, columnName, tokenText);
+            var col = new SqlColumn(token,tableName, columnName);
             Columns.Add(col);
             CurrentTarget = col;
         }
@@ -252,9 +294,9 @@ namespace AntlrCSharp.analysis
 
         public void AppendPredicate(SqlPredicate pred) { Predicates.Add(pred); }
 
-        public void AddTable(string db, string schema, string tableName, string tokenText) => AddTable(new SqlTable(db, schema, tableName, tokenText));
-        public void AddTable(string schema,string tableName,string tokenText) => AddTable(new SqlTable(schema, tableName, tokenText));
-        public void AddTable( string tableName, string tokenText) => AddTable(new SqlTable("dbo", tableName, tokenText));
+        public void AddTable(BaseToken token, string db, string schema, string tableName) => AddTable(new SqlTable(token,db, schema, tableName));
+        public void AddTable(BaseToken token, string schema,string tableName) => AddTable(new SqlTable(token,schema, tableName));
+        public void AddTable(BaseToken token, string tableName) => AddTable(new SqlTable(token,"dbo", tableName));
 
         private void AddTable(SqlTable tbl)
         {

@@ -20,7 +20,11 @@ namespace AntlrCSharp.listeners
         {
             _parser = parser;
         }
-        
+
+        private static BaseToken AsBaseToken(ParserRuleContext context) => new(context.GetText(), context.Start.StartIndex, context.Stop.StopIndex);
+        private static BaseToken AsBaseToken(ParserRuleContext context,string implicitTokenText) => new(implicitTokenText, context?.Start?.StartIndex ?? -1, context?.Stop?.StopIndex ?? -1);
+
+
         public override void EnterEveryRule([NN] ParserRuleContext context)
         {
             Console.WriteLine($"enter {_parser.RuleNames[context.RuleIndex]} - {context.GetText()}");
@@ -60,7 +64,7 @@ namespace AntlrCSharp.listeners
 
         public override void EnterSql_clause([NN] Sql_clauseContext context)
         {
-            CurrentStatement = new SqlStatement(context.GetText());
+            CurrentStatement = new SqlStatement(AsBaseToken(context));
 
         }
         public override void ExitSql_clause([NN] Sql_clauseContext context)
@@ -78,7 +82,7 @@ namespace AntlrCSharp.listeners
             var tokenText = context.GetText();
             var parts = tokenText.Replace("[","").Replace("]","").Split(".");
             if(parts.Length >= 2) {
-                CurrentStatement.AddColumn(parts[parts.Length-2], parts[parts.Length - 1], context.GetText());
+                CurrentStatement.AddColumn(AsBaseToken(context),parts[parts.Length-2], parts[parts.Length - 1]);
             }
             base.ExitFull_column_name(context);
         }
@@ -112,15 +116,15 @@ namespace AntlrCSharp.listeners
                 var right = c.right;
                 var op = c.op.GetText();
                 var rightText = right is null ? (op == "IS" ? "NULL" : "") : right.GetText();
-                var leftOp = new SqlOperand(left.GetText(), left is Function_call_expressionContext, FunctionOverConstant(left),_inWhere,_caseExpressionDepth > 0, _subqueryDepth);
-                var rightOp = new SqlOperand(rightText, right is Function_call_expressionContext, FunctionOverConstant(right), _inWhere, _caseExpressionDepth > 0, _subqueryDepth);
-                CurrentStatement.AppendPredicate(new SqlPredicate(c.GetText(), leftOp, rightOp, op, _inWhere));
+                var leftOp = new SqlOperand(AsBaseToken(left), left is Function_call_expressionContext, FunctionOverConstant(left),_inWhere,_caseExpressionDepth > 0, _subqueryDepth);
+                var rightOp = new SqlOperand(AsBaseToken(right,rightText), right is Function_call_expressionContext, FunctionOverConstant(right), _inWhere, _caseExpressionDepth > 0, _subqueryDepth);
+                CurrentStatement.AppendPredicate(new SqlPredicate(AsBaseToken(c), leftOp, rightOp, op, _inWhere));
             }
             else if(child is Binary_in_expressionContext ec)
             {
                 var left = ec.left;
                 var op = ec.op.Text;
-                var leftOp = new SqlOperand(left.GetText(), left is Function_call_expressionContext, FunctionOverConstant(left), _inWhere, _caseExpressionDepth > 0, _subqueryDepth);
+                var leftOp = new SqlOperand(AsBaseToken(left), left is Function_call_expressionContext, FunctionOverConstant(left), _inWhere, _caseExpressionDepth > 0, _subqueryDepth);
                 var sub = ec.subquery();
                 var allFunctionsOverConstant = true; //Yes Not Exhaustive Check yet
                 var subqueryFunctions = FindInstancesOfParentType<Function_call_expressionContext>(sub.children);
@@ -141,7 +145,7 @@ namespace AntlrCSharp.listeners
                  */
 
                 var rightOp = new SqlOperand(
-                    sub.GetText(),
+                    AsBaseToken(sub),
                     hasSubqueryFunctions,
                     allFunctionsOverConstant,
                     _inWhere,
@@ -149,7 +153,7 @@ namespace AntlrCSharp.listeners
                     _subqueryDepth 
                 );
 
-                CurrentStatement.AppendPredicate(new SqlPredicate(ec.GetText(), leftOp, rightOp, op, _inWhere));
+                CurrentStatement.AppendPredicate(new SqlPredicate(AsBaseToken(ec), leftOp, rightOp, op, _inWhere));
 
 
             }
@@ -213,7 +217,7 @@ namespace AntlrCSharp.listeners
             var tableName = parts[plen - 1]; 
             if(parts.Length > 1) { schema = parts[plen - 2]; }
             if (parts.Length > 2) {  database = parts[plen - 3]; }
-            CurrentStatement.AddTable(database, schema, tableName, context.GetText());
+            CurrentStatement.AddTable(AsBaseToken(context),database, schema, tableName);
             if (context.table_alias() is not null) { 
                 var alias = context.table_alias().GetText();
                 var usedAS = alias.Substring(0, 2) == "AS";
