@@ -1,6 +1,7 @@
 ﻿using Antlr4.Runtime;
 using Antlr4.Runtime.Tree;
 using AntlrCSharp.analysis;
+using AntlrCSharp.listeners;
 using System.Xml.Linq;
 using static tsqlParser;
 using NN = System.Diagnostics.CodeAnalysis.NotNullAttribute;
@@ -13,7 +14,7 @@ namespace AntlrCSharp.listeners
         private int _caseExpressionDepth = 0;
         private int _subqueryDepth = 0;
         public List<SqlStatement> Statements { get; } = new List<SqlStatement>();
-        private readonly Parser _parser;
+        protected readonly Parser _parser;
         private SqlStatement CurrentStatement { get; set; }
 
         public SqlListener([NN] Parser parser)
@@ -21,17 +22,11 @@ namespace AntlrCSharp.listeners
             _parser = parser;
         }
 
-        private static BaseToken AsBaseToken(ParserRuleContext context) => new(context.GetText(), context.Start.StartIndex, context.Stop.StopIndex);
+        private static BaseToken AsBaseToken(ParserRuleContext context) => new(context.GetFullText(), context.Start.StartIndex, context.Stop.StopIndex);
         private static BaseToken AsBaseToken(ParserRuleContext context, string implicitTokenText) => new(implicitTokenText, context?.Start?.StartIndex ?? -1, context?.Stop?.StopIndex ?? -1);
 
 
-        public override void EnterEveryRule([NN] ParserRuleContext context)
-        {
-            Console.WriteLine($"enter {_parser.RuleNames[context.RuleIndex]} - {context.GetText()}");
-            base.EnterEveryRule(context);
 
-
-        }
 
         public override void EnterTable_sources([Antlr4.Runtime.Misc.NotNull] Table_sourcesContext context)
         {
@@ -48,12 +43,7 @@ namespace AntlrCSharp.listeners
             _inWhere = false;
         }
 
-        public override void ExitEveryRule([NN] ParserRuleContext context)
-        {
-            Console.WriteLine($"exit {_parser.RuleNames[context.RuleIndex]} - {context.GetText()}");
-            base.ExitEveryRule(context);
 
-        }
 
         public override void EnterTsql_file([NN] Tsql_fileContext context)
         {
@@ -89,7 +79,9 @@ namespace AntlrCSharp.listeners
 
         public override void ExitSelect_list_elem([NN] Select_list_elemContext context)
         {
-            if (context.column_alias() is not null) { CurrentStatement.AppendAlias(context.column_alias().GetText()); }
+            if (context.column_alias() is not null) { 
+                CurrentStatement.AppendAlias(context.column_alias().GetFullText());
+            }
         }
 
         public override void EnterCase_expression([NN] Case_expressionContext context) => _caseExpressionDepth += 1;
@@ -240,4 +232,20 @@ namespace AntlrCSharp.listeners
         }
 
     }
+    public class TokenLoggingSqlListener : SqlListener
+    {
+        public TokenLoggingSqlListener([NN] Parser parser):base(parser){}
+        public override void EnterEveryRule([NN] ParserRuleContext context)
+        {
+            Console.WriteLine($"enter {_parser.RuleNames[context.RuleIndex]} - {context.GetFullText()}");
+            base.EnterEveryRule(context);
+        }
+        public override void ExitEveryRule([NN] ParserRuleContext context)
+        {
+            Console.WriteLine($"exit {_parser.RuleNames[context.RuleIndex]} - {context.GetFullText()}");
+            base.ExitEveryRule(context);
+
+        }
+    }
 }
+

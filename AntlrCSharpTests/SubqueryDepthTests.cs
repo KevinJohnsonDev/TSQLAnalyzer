@@ -29,7 +29,7 @@ namespace AntlrCSharpTests
         public void DepthReporterMarksQueriesDeeperThanMaxAsError()
         {
 
-            SqlListener listener = Init(_sampleQuery);
+            SqlListener listener = TestMethods.Init(_sampleQuery);
             SubqueryDepthReporter r = new(listener.Statements,2);
             Assert.IsTrue(r.Errors.Count==1);
             Assert.IsTrue(r.Errors[0].TokenText == listener.Statements[0].TokenText);
@@ -38,19 +38,9 @@ namespace AntlrCSharpTests
         [TestMethod]
         public void DepthReporterIgnoresLessThanEqualToMax()
         {
-            SqlListener listener = Init(_sampleQuery);
+            SqlListener listener = TestMethods.Init(_sampleQuery);
             SubqueryDepthReporter r = new(listener.Statements, 3);
             Assert.IsTrue(r.Errors.Count == 0);
-        }
-        private static SqlListener Init(string input)
-        {
-            AntlrInputStream inputStream = new(input);
-            tsqlLexer tsqlLexer = new(inputStream);
-            CommonTokenStream commonTokenStream = new(tsqlLexer);
-            tsqlParser sqlParser = new(commonTokenStream);
-            SqlListener listener = new(sqlParser);
-            ParseTreeWalker.Default.Walk(listener, sqlParser.tsql_file());
-            return listener;
         }
     }
 

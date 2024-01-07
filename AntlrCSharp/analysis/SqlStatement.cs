@@ -287,8 +287,10 @@ namespace AntlrCSharp.analysis
         {
             var col = new SqlColumn(token,tableName, columnName);
             Columns.Add(col);
+            CurrentSubquery?.Columns.Add(col);
             CurrentAliasable = col;
         }
+
         public void AppendAlias(string alias, bool usedAs = false)
         {
             if(CurrentAliasable == null) { return; }/*Case where Constant has alias so we don't need to mark constants as columns*/
@@ -297,11 +299,13 @@ namespace AntlrCSharp.analysis
             CurrentAliasable = null;
         }
 
-        public void AppendPredicate(SqlPredicate pred) { Predicates.Add(pred); }
+        public void AppendPredicate(SqlPredicate pred) {
+            Predicates.Add(pred); 
+        }
 
-        public void AddTable(BaseToken token, string db, string schema, string tableName) => AddTable(new SqlTable(token,db, schema, tableName));
-        public void AddTable(BaseToken token, string schema,string tableName) => AddTable(new SqlTable(token,schema, tableName));
-        public void AddTable(BaseToken token, string tableName) => AddTable(new SqlTable(token,"dbo", tableName));
+        public void AddTable(BaseToken token, string db, string schema, string tableName) => AddTable(new SqlTable(token, db, schema, tableName));
+        public void AddTable(BaseToken token, string schema, string tableName) => AddTable(new SqlTable(token, schema, tableName));
+        public void AddTable(BaseToken token, string tableName) => AddTable(new SqlTable(token, "dbo", tableName));
 
         public void EnterSubquery(BaseToken token)
         {
@@ -321,6 +325,7 @@ namespace AntlrCSharp.analysis
         {
             CurrentAliasable = tbl;
             Tables.Add(tbl);
+            CurrentSubquery?.Tables.Add(tbl);
         }
 
         public override string ToString()
