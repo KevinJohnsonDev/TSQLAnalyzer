@@ -220,12 +220,14 @@ namespace AntlrCSharp.analysis
         public int End { get; init; }
         public Boolean UsesDistinct { get; set; }
         public  List<SqlPredicate> Predicates { get; } = new List<SqlPredicate>();
-        public List<SqlStatement> Subqueries { get; } = new List<SqlStatement>();
+        public List<Subquery> Subqueries { get; } = new List<Subquery>();
 
         public List<SqlTable> Tables { get; } = new List<SqlTable>();
         public List<SqlColumn> Columns { get; } = new List<SqlColumn>();
 
-        private IAliasable CurrentTarget { get; set; }
+        private IAliasable? CurrentAliasable { get; set; }
+        private Subquery CurrentSubquery { get; set; }
+        private Stack<Subquery> PendingSubqueries { get;}
 
         private readonly List<ISargable> _nonSargableTokens = new();
         public IEnumerable<ISargable> NonSargableTokens 
@@ -254,6 +256,7 @@ namespace AntlrCSharp.analysis
             Start = token.Start;
             End = token.End;
             UsesDistinct = false;
+            PendingSubqueries = new();
         }
         public SqlStatement(BaseToken token,String db, bool usesDistinct)
         {
@@ -284,12 +287,14 @@ namespace AntlrCSharp.analysis
         {
             var col = new SqlColumn(token,tableName, columnName);
             Columns.Add(col);
-            CurrentTarget = col;
+            CurrentAliasable = col;
         }
         public void AppendAlias(string alias, bool usedAs = false)
         {
-            CurrentTarget.Alias = alias;
-            CurrentTarget.UsedAs = usedAs;
+            if(CurrentAliasable == null) { return; }/*Case where Constant has alias so we don't need to mark constants as columns*/
+            CurrentAliasable.Alias = alias;
+            CurrentAliasable.UsedAs = usedAs;
+            CurrentAliasable = null;
         }
 
         public void AppendPredicate(SqlPredicate pred) { Predicates.Add(pred); }
@@ -298,9 +303,23 @@ namespace AntlrCSharp.analysis
         public void AddTable(BaseToken token, string schema,string tableName) => AddTable(new SqlTable(token,schema, tableName));
         public void AddTable(BaseToken token, string tableName) => AddTable(new SqlTable(token,"dbo", tableName));
 
+        public void EnterSubquery(BaseToken token)
+        {
+            var cur = new Subquery(token);
+            var target = CurrentSubquery ?? this;
+            target.Subqueries.Add(cur);
+            PendingSubqueries.Push(cur);     
+            CurrentSubquery = cur;
+        }
+
+        public void ExitSubquery()
+        {
+            CurrentAliasable = PendingSubqueries.Pop();
+            CurrentSubquery = (Subquery)CurrentAliasable;
+        }
         private void AddTable(SqlTable tbl)
         {
-            CurrentTarget = tbl;
+            CurrentAliasable = tbl;
             Tables.Add(tbl);
         }
 
@@ -314,5 +333,15 @@ namespace AntlrCSharp.analysis
             foreach(var pred in Predicates) { preds += $"\t{pred}\n"; }
             return $"{TokenText}\n{DbContext}\n{preds}\n{tables}\n{columns}";
         }
+    }
+
+    public class Subquery : SqlStatement, IAliasable
+    {
+        public String Alias { get; set; } = "";
+        public bool UsedAs { get; set; }
+
+        public Subquery(BaseToken token):base( token) { }
+
+        public Subquery(BaseToken token, String db, bool usesDistinct):base(token,db,usesDistinct){}
     }
 }

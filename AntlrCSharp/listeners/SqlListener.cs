@@ -6,7 +6,7 @@ using static tsqlParser;
 using NN = System.Diagnostics.CodeAnalysis.NotNullAttribute;
 namespace AntlrCSharp.listeners
 {
-    public class SqlListener: tsqlBaseListener
+    public class SqlListener : tsqlBaseListener
     {
         public String DB { get; set; } = "";
         public bool _inWhere = false;
@@ -22,7 +22,7 @@ namespace AntlrCSharp.listeners
         }
 
         private static BaseToken AsBaseToken(ParserRuleContext context) => new(context.GetText(), context.Start.StartIndex, context.Stop.StopIndex);
-        private static BaseToken AsBaseToken(ParserRuleContext context,string implicitTokenText) => new(implicitTokenText, context?.Start?.StartIndex ?? -1, context?.Stop?.StopIndex ?? -1);
+        private static BaseToken AsBaseToken(ParserRuleContext context, string implicitTokenText) => new(implicitTokenText, context?.Start?.StartIndex ?? -1, context?.Stop?.StopIndex ?? -1);
 
 
         public override void EnterEveryRule([NN] ParserRuleContext context)
@@ -54,10 +54,10 @@ namespace AntlrCSharp.listeners
             base.ExitEveryRule(context);
 
         }
-    
+
         public override void EnterTsql_file([NN] Tsql_fileContext context)
         {
-           // base.EnterTsql_file(context);
+            // base.EnterTsql_file(context);
 
         }
 
@@ -80,9 +80,9 @@ namespace AntlrCSharp.listeners
         public override void ExitFull_column_name([Antlr4.Runtime.Misc.NotNull] Full_column_nameContext context)
         {
             var tokenText = context.GetText();
-            var parts = tokenText.Replace("[","").Replace("]","").Split(".");
-            if(parts.Length >= 2) {
-                CurrentStatement.AddColumn(AsBaseToken(context),parts[parts.Length-2], parts[parts.Length - 1]);
+            var parts = tokenText.Replace("[", "").Replace("]", "").Split(".");
+            if (parts.Length >= 2) {
+                CurrentStatement.AddColumn(AsBaseToken(context), parts[parts.Length - 2], parts[parts.Length - 1]);
             }
             base.ExitFull_column_name(context);
         }
@@ -90,12 +90,19 @@ namespace AntlrCSharp.listeners
         public override void ExitSelect_list_elem([NN] Select_list_elemContext context)
         {
             if (context.column_alias() is not null) { CurrentStatement.AppendAlias(context.column_alias().GetText()); }
-        } 
+        }
 
-        public override void EnterCase_expression([NN]  Case_expressionContext context) => _caseExpressionDepth += 1;
+        public override void EnterCase_expression([NN] Case_expressionContext context) => _caseExpressionDepth += 1;
         public override void ExitCase_expression([NN] Case_expressionContext context) => _caseExpressionDepth -= 1;
-        public override void EnterSubquery([Antlr4.Runtime.Misc.NotNull] SubqueryContext context) => _subqueryDepth += 1;
-        public override void ExitSubquery([Antlr4.Runtime.Misc.NotNull] SubqueryContext context) => _subqueryDepth -= 1;
+        public override void EnterSubquery([Antlr4.Runtime.Misc.NotNull] SubqueryContext context) {
+            _subqueryDepth += 1;
+            CurrentStatement.EnterSubquery(AsBaseToken(context));
+         }
+        public override void ExitSubquery([Antlr4.Runtime.Misc.NotNull] SubqueryContext context)
+        {
+            _subqueryDepth -= 1;
+            CurrentStatement.ExitSubquery();
+        }
 
         public override void ExitQuery_specification([NN] Query_specificationContext context)
         {
