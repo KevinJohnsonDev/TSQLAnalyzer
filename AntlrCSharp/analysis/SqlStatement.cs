@@ -87,7 +87,7 @@ namespace AntlrCSharp.analysis
 
         public override string ToString()
         {
-            return $"{TokenText} \n\tInWhere:{InWhere}\n\tInCaseStatement:{InCaseStatement}\n\tUsedFunction:{UsedFunction} \n\t\tUsedFunction:{UsedFunction}";
+            return $"{TokenText}:{Start}-{End}\n\tInWhere:{InWhere}\n\tInCaseStatement:{InCaseStatement}\n\tUsedFunction:{UsedFunction}";
         }
     }
     public class SqlPredicate : ISargable, ITokenText
@@ -120,7 +120,7 @@ namespace AntlrCSharp.analysis
 
         public override string ToString()
         {
-            return $"{TokenText} \n\t\tLeft:{Left} \n\t\tOp:{Op} \n\t\tRight:{Right}";
+            return $"{TokenText}:{Start}-{End}\n\tLeft:{Left}\n\tOp:{Op}\n\tRight:{Right}";
         }
     }
     public class SqlTable : ITokenText, IAliasable, IEquatable<SqlTable?>
@@ -153,7 +153,7 @@ namespace AntlrCSharp.analysis
             End = token.End;
         }
 
-        public override string ToString() => $" {TokenText}\n\tDatabase:{Database}\n\tSchema:{Schema}\n\tTableName:{TableName}\n\tAlias:{Alias}\n\tUsedAs:{UsedAs}";
+        public override string ToString() => $"{TokenText}:{Start}-{End}\n\tDatabase:{Database}\n\tSchema:{Schema}\n\tTableName:{TableName}\n\tAlias:{Alias}\n\tUsedAs:{UsedAs}";
 
         public override bool Equals(object? obj)
         {
@@ -208,7 +208,7 @@ namespace AntlrCSharp.analysis
             OwnerID = ownerID;
         }
 
-        public override string ToString() => $"{TokenText} - ColumnName:{ColumnName} - UsedAs:{UsedAs} - OwnerID:{OwnerID} - Table:{Table?.ToString()}";
+        public override string ToString() => $"{TokenText}:{Start}-{End}\n\tColumnName:{ColumnName}\n\tUsedAs:{UsedAs}\n\tOwnerID:{OwnerID}\n\tTable:{Table?.ToString()}";
         
 
     }
@@ -325,13 +325,15 @@ namespace AntlrCSharp.analysis
 
         public override string ToString()
         {
-            var tables = "Table List\n";
-            var columns= "Column List\n";
-            var preds = "Predicate List\n";
-            foreach(var table in Tables) { tables += "\t" + table.ToString() + "\n"; }
-            foreach(var column in Columns) { columns += $"\t{column}\n"; }
-            foreach(var pred in Predicates) { preds += $"\t{pred}\n"; }
-            return $"{TokenText}\n{DbContext}\n{preds}\n{tables}\n{columns}";
+            var tables = "Table List";
+            var columns= "Column List";
+            var preds = "Predicate List";
+            var subs = "Subquery List";
+            foreach(var table in Tables) { tables += "\n\t\t" + table.ToString().ToString().Replace("\t", "\t\t\t"); }
+            foreach(var column in Columns) { columns += $"\n\t\t{column.ToString().Replace("\t", "\t\t\t")}"; }
+            foreach(var pred in Predicates) { preds += $"\n\t\t{pred.ToString().Replace("\t","\t\t\t")}"; }
+            foreach(var sub in Subqueries) { subs += $"\n\t\t{sub}"; }
+            return $"{TokenText}:{Start}-{End}\n\tContext:{DbContext}\n\t{preds}\n\t{tables}\n\t{columns}\n\t{subs}";
         }
     }
 
