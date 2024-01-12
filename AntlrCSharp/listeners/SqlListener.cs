@@ -236,15 +236,13 @@ namespace AntlrCSharp.listeners
         {   /*DataTypes Don't have about spaces so we can use GetText*/
             var dataType = context.data_type();
             var name = context.LOCAL_ID().GetText();
-
             var parms = dataType.DECIMAL();
-            var baseType = dataType.children[0].GetText();
             int? precision = null;
             int? scale = null;
             if (parms.Length > 0) precision = Int32.Parse(parms[0].GetText());
             if (parms.Length > 1) scale = Int32.Parse(parms[1].GetText());
 
-            CurrentEnvironment.AppendVariable(AsBaseToken(context), name, baseType, precision, scale);
+            CurrentEnvironment.AppendVariable(AsBaseToken(context), name, dataType.GetText(), precision, scale);
         }   
 
         

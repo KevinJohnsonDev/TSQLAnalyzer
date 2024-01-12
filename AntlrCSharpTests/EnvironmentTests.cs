@@ -39,7 +39,7 @@ namespace AntlrCSharpTests
         private static bool IsXInt(SqlVariable v) => v.Name == "@X" && v.DataType == "INT";
         private static bool IsXNumeric(SqlVariable v, int? precision, int? scale)
         {
-           return v.Name == "@X" && v.DataType == "NUMERIC" && v.Precision == precision && v.Scale == scale;
+           return v.Name == "@X" && v.DataType == "NUMERIC(15,10)" && v.Precision == precision && v.Scale == scale;
         }
 
     }
