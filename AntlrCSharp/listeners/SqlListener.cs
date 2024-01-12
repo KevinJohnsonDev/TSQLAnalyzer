@@ -17,9 +17,13 @@ namespace AntlrCSharp.listeners
         protected readonly Parser _parser;
         private SqlStatement CurrentStatement { get; set; }
 
+        public List<analysis.Environment> Environments { get; init; } = new List<analysis.Environment>();
+        private analysis.Environment CurrentEnvironment { get; set; } = new analysis.Environment();
+
         public SqlListener([NN] Parser parser)
         {
             _parser = parser;
+
         }
 
         private static BaseToken AsBaseToken(ParserRuleContext context) => new(context.GetFullText(), context.Start.StartIndex, context.Stop.StopIndex);
@@ -45,11 +49,13 @@ namespace AntlrCSharp.listeners
 
 
 
-        public override void EnterTsql_file([NN] Tsql_fileContext context)
+        public override void EnterBatch([Antlr4.Runtime.Misc.NotNull] BatchContext context)
         {
-            // base.EnterTsql_file(context);
-
+            Environments.Add(new analysis.Environment());
+            CurrentEnvironment = Environments[Environments.Count-1];
         }
+
+
 
 
         public override void EnterSql_clause([NN] Sql_clauseContext context)
@@ -226,6 +232,22 @@ namespace AntlrCSharp.listeners
 
         }
 
+        public override void EnterDeclare_local([Antlr4.Runtime.Misc.NotNull] Declare_localContext context)
+        {   /*DataTypes Don't have about spaces so we can use GetText*/
+            var dataType = context.data_type();
+            var name = context.LOCAL_ID().GetText();
+
+            var parms = dataType.DECIMAL();
+            var baseType = dataType.children[0].GetText();
+            int? precision = null;
+            int? scale = null;
+            if (parms.Length > 0) precision = Int32.Parse(parms[0].GetText());
+            if (parms.Length > 1) scale = Int32.Parse(parms[1].GetText());
+
+            CurrentEnvironment.AppendVariable(AsBaseToken(context), name, baseType, precision, scale);
+        }   
+
+        
 
         public override void EnterSelect_list([NN] Select_listContext ctx)
         {

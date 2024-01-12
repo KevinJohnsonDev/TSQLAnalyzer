@@ -50,6 +50,44 @@ namespace AntlrCSharp.analysis
         }
     }
 
+    public class SqlVariable: ITokenText
+    {
+        /*Declaration TokenText */
+        public string TokenText { get; init; }
+        public int Start { get; init; }
+        public int End { get; init; }
+        public string Name { get; init;}
+
+        public string DataType { get; init; }
+        public int? Precision { get; init; }
+        public int? Scale { get; init; }
+
+        public SqlVariable(BaseToken token, string name, string dataType, int? precision = null, int? scale = null)
+        {
+            TokenText = token.TokenText;
+            Start = token.Start;
+            End = token.End;
+            Name = name;
+            DataType = dataType;
+            Precision = precision;
+            Scale = scale;
+        }
+    }
+
+    public class Environment
+    {
+        public List<SqlVariable> Variables { get; init; }
+
+        public Environment()
+        {
+            Variables = new List<SqlVariable>();
+        }
+
+        public void AppendVariable(BaseToken token, string name, string dataType, int? precision = null, int? scale = null)
+        {
+            Variables.Add(new SqlVariable(token,name,dataType,precision,scale)); 
+        }
+    }
 
 
     public class SqlOperand : ISargable,ITokenText {
