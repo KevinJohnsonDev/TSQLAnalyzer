@@ -2,6 +2,7 @@
 using Antlr4.Runtime.Tree;
 using AntlrCSharp.analysis;
 using AntlrCSharp.listeners;
+using System.ComponentModel.DataAnnotations;
 using System.Xml.Linq;
 using static tsqlParser;
 using NN = System.Diagnostics.CodeAnalysis.NotNullAttribute;
@@ -234,22 +235,57 @@ namespace AntlrCSharp.listeners
 
         public override void EnterDeclare_local([Antlr4.Runtime.Misc.NotNull] Declare_localContext context)
         {   /*DataTypes Don't have about spaces so we can use GetText*/
-            var dataType = context.data_type();
+            var dataType = Extracted_Data_Type(context.data_type());
             var name = context.LOCAL_ID().GetText();
-            var parms = dataType.DECIMAL();
-            var baseType = dataType.children[0].GetText();
+            CurrentEnvironment.AppendVariable(AsBaseToken(context), name, dataType);
+        }   
+
+        
+        private SqlDataType Extracted_Data_Type(Data_typeContext dtc) {
+            var parms = dtc.DECIMAL();
+            var baseType = dtc.children[0].GetText();
             int? precision = null;
             int? scale = null;
             if (parms.Length > 0) precision = Int32.Parse(parms[0].GetText());
             if (parms.Length > 1) scale = Int32.Parse(parms[1].GetText());
-
-            CurrentEnvironment.AppendVariable(AsBaseToken(context), name, baseType, precision, scale);
-        }   
-
-        
+            return new SqlDataType(AsBaseToken(dtc),baseType,precision,scale);
+        }
 
         public override void EnterSelect_list([NN] Select_listContext ctx)
         {
+        }
+
+        public override void EnterCreate_table([NN] Create_tableContext ctx) {
+           var nameToken = ctx.GetChild<Table_nameContext>(0);
+           var db = nameToken.database?.GetText() ?? "";
+           var schema = nameToken.schema?.GetText() ?? "";
+           var tableName = nameToken.table.GetText();
+           var table = new SqlTable(AsBaseToken(ctx), db, schema, tableName);
+           CurrentStatement.AddTable(table);
+
+            /*
+             * CREATE --> Token 0 Ignore
+             * TABLE --> Token 1 Ignore
+             * [Name] --> Token 2 Already Processed above
+             * ( --> Token 3
+             * Columns
+             * ) --> Last Token
+             */
+            for (int i = 4; i < ctx.children.Count - 1; i++) { 
+                var child = ctx.children[i];
+                if (child is Column_def_table_constraintsContext columnConstraint) {
+                    foreach(var token in columnConstraint.children) {
+                            if(token is Column_def_table_constraintContext column) {
+                                var colToken = column.children[0] as Column_definitionContext;
+                                var name = colToken.r_id(0).GetText();
+                                var dt = Extracted_Data_Type(colToken.data_type());
+                                var columnToAdd = new SqlColumn(AsBaseToken(colToken), table, dt);
+                                table.Columns.Add(columnToAdd);
+                                
+                            }
+                        }   
+                }
+            }
         }
 
     }

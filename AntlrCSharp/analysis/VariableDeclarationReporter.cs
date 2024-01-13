@@ -21,7 +21,7 @@ namespace AntlrCSharp.analysis
                         continue;
                     }
                     var expected = VariableDataTypes[variable.Name];
-                    if (!variable.SameType(expected)){
+                    if (!variable.DeclaredDataType.Equals(expected.DeclaredDataType)){
                         Errors.Add(variable);
                     }
                 }

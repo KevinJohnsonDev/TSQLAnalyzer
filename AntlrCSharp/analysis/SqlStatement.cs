@@ -9,8 +9,7 @@ using System.Threading.Tasks;
 using static Antlr4.Runtime.Atn.SemanticContext;
 using static System.Net.Mime.MediaTypeNames;
 
-namespace AntlrCSharp.analysis
-{
+namespace AntlrCSharp.analysis {
 
     public enum DataType {
         USER_DEFINED = -1,
@@ -27,7 +26,7 @@ namespace AntlrCSharp.analysis
         SMALLMONEY = 6,
         MONEY = 7,
         FLOAT = 8,
-        REAL =9 ,
+        REAL = 9,
         DATE = 10,
         DATETIMEOFFSET = 11,
         DATETIME = 12,
@@ -48,76 +47,99 @@ namespace AntlrCSharp.analysis
 #pragma warning disable CA1069 // Enums values should not be duplicated
         TIMESTAMP = 26,
 #pragma warning restore CA1069 // Enums values should not be duplicated
-        HIERARCHYID = 27, 
+        HIERARCHYID = 27,
         UNIQUEIDENTIFIER = 28,
         SQL_VARIANT = 29,
         XML = 30,
-        GEOMETRY = 31
+        GEOMETRY = 31,
+        UNRESOLVED = 99
     }
-    public interface ITokenText
-    {
+    public interface ITokenText {
         String TokenText { get; init; }
         int Start { get; init; }
         int End { get; init; }
     }
-    public interface ISargable : ITokenText
-    {
+    public interface ISargable : ITokenText {
         Boolean IsSargable();
 
     }
 
-    public interface INonSargableTokens
-    {
+    public interface INonSargableTokens {
         IEnumerable<ISargable> NonSargableTokens { get; }
     }
 
-    public interface IAliasable : ITokenText
-    {
+    public interface IAliasable : ITokenText {
         String Alias { get; set; }
         bool UsedAs { get; set; }
     }
 
-    public class BaseToken: ITokenText
-    {
+    public class BaseToken : ITokenText {
         public String TokenText { get; init; }
         public int Start { get; init; }
         public int End { get; init; }
 
-        public BaseToken(string tokenText, int start, int end)
-        {
+        public BaseToken(string tokenText, int start, int end) {
             TokenText = tokenText;
             Start = start;
             End = end;
         }
     }
 
-    public class SqlVariable: ITokenText
-    {
+
+    public class SqlDataType : ITokenText, IEquatable<SqlDataType?> {
         /*Declaration TokenText */
         public string TokenText { get; init; }
         public int Start { get; init; }
         public int End { get; init; }
-        public string Name { get; init;}
+
 
         public DataType BaseType { get; init; }
         public int? Precision { get; init; }
         public int? Scale { get; init; }
 
-        public SqlVariable(BaseToken token, string name, string dataType, int? precision = null, int? scale = null)
-        {
+        public SqlDataType(BaseToken token, string dataType, int? precision = null, int? scale = null) {
             TokenText = token.TokenText;
             Start = token.Start;
             End = token.End;
-            Name = name;
             BaseType = Enum.TryParse(dataType, out DataType dt) ? dt : DataType.USER_DEFINED;
             Precision = precision;
             Scale = scale;
         }
 
-        public bool SameType(SqlVariable sv) {
-            return  sv.Precision == Precision &&
-                    sv.Scale == Scale &&
-                    sv.BaseType == BaseType;
+        public bool Equals(SqlDataType? other) {
+            return other is not null &&
+                   BaseType == other.BaseType &&
+                   Precision == other.Precision &&
+                   Scale == other.Scale;
+        }
+
+        public override int GetHashCode() {
+            return HashCode.Combine(BaseType, Precision, Scale);
+        }
+
+        public static bool operator ==(SqlDataType? left, SqlDataType? right) {
+            return EqualityComparer<SqlDataType>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(SqlDataType? left, SqlDataType? right) {
+            return !(left == right);
+        }
+    }
+    public class SqlVariable : ITokenText {
+
+        public string TokenText { get; init; }
+        public int Start { get; init; }
+        public int End { get; init; }
+
+        public string Name { get; init; }
+        public SqlDataType DeclaredDataType { get; init; }
+
+        public SqlVariable(BaseToken token, string name, SqlDataType declaredDataType) {
+            TokenText = token.TokenText;
+            Start = token.Start;
+            End = token.End;
+            Name = name;
+            DeclaredDataType = declaredDataType;
         }
     }
 
@@ -130,9 +152,9 @@ namespace AntlrCSharp.analysis
             Variables = new List<SqlVariable>();
         }
 
-        public void AppendVariable(BaseToken token, string name, string dataType, int? precision = null, int? scale = null)
+        public void AppendVariable(BaseToken token, string name, SqlDataType sdt)
         {
-            Variables.Add(new SqlVariable(token,name,dataType,precision,scale)); 
+            Variables.Add(new SqlVariable(token,name, sdt)); 
         }
     }
 
@@ -219,7 +241,10 @@ namespace AntlrCSharp.analysis
         public string Schema { get; init; }
         public string TableName { get; init; }
 
+        public List<SqlColumn> Columns { get; init; }
+
         public SqlTable(BaseToken token, string database,string schema, string tableName) {
+            Columns = new();
             Database = database;
             Schema = schema;
             TableName = tableName;
@@ -230,6 +255,7 @@ namespace AntlrCSharp.analysis
 
         public SqlTable(BaseToken token, string schema, string tableName)
         {
+            Columns = new();
             Database = "";
             Schema = schema;
             TableName = tableName;
@@ -285,13 +311,26 @@ namespace AntlrCSharp.analysis
         /* This represents either the table OR the named table expression that this column references during parseTime */
         public string OwnerID { get; init; }
 
-        public SqlColumn(BaseToken token,string ownerID, string columnName) {
+        public SqlDataType? SqlType { get; set; }
+
+        public SqlColumn(BaseToken token,string ownerID, string columnName, SqlDataType sqlType = null) {
             TokenText = token.TokenText;
             Start = token.Start;
             End = token.End;
             ColumnName = columnName;
             OwnerID = ownerID;
+            SqlType = sqlType;
         }
+
+        public SqlColumn(BaseToken token,SqlTable table, SqlDataType? sqlType = null) {
+            TokenText = token.TokenText;
+            Start = token.Start;
+            End = token.End;
+            Table = table;
+            SqlType = sqlType;
+
+        }
+
 
         public override string ToString() => $"{TokenText}:{Start}-{End}\n\tColumnName:{ColumnName}\n\tUsedAs:{UsedAs}\n\tOwnerID:{OwnerID}\n\tTable:{Table?.ToString()}";
         
@@ -391,7 +430,11 @@ namespace AntlrCSharp.analysis
         public void AddTable(BaseToken token, string db, string schema, string tableName) => AddTable(new SqlTable(token, db, schema, tableName));
         public void AddTable(BaseToken token, string schema, string tableName) => AddTable(new SqlTable(token, schema, tableName));
         public void AddTable(BaseToken token, string tableName) => AddTable(new SqlTable(token, "dbo", tableName));
-
+        public void AddTable(SqlTable tbl) {
+            CurrentAliasable = tbl;
+            Tables.Add(tbl);
+            CurrentSubquery?.Tables.Add(tbl);
+        }
         public void EnterSubquery(BaseToken token)
         {
             var cur = new Subquery(token);
@@ -406,12 +449,7 @@ namespace AntlrCSharp.analysis
             CurrentAliasable = PendingSubqueries.Pop();
             CurrentSubquery = (Subquery)CurrentAliasable;
         }
-        private void AddTable(SqlTable tbl)
-        {
-            CurrentAliasable = tbl;
-            Tables.Add(tbl);
-            CurrentSubquery?.Tables.Add(tbl);
-        }
+
 
         public override string ToString()
         {

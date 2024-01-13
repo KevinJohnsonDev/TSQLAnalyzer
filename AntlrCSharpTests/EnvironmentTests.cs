@@ -33,13 +33,14 @@ namespace AntlrCSharpTests
 
             env = listener.Environments[1];
             Assert.IsTrue(env.Variables.Count == 1);
-            Assert.IsTrue(IsXNumeric(env.Variables[0],15,10));
+            Assert.IsTrue(env.Variables[0].Name == "@X");
+            Assert.IsTrue(IsXNumeric(env.Variables[0].DeclaredDataType,15,10));
         }
 
-        private static bool IsXInt(SqlVariable v) => v.Name == "@X" && v.BaseType == DataType.INT;
-        private static bool IsXNumeric(SqlVariable v, int? precision, int? scale)
+        private static bool IsXInt(SqlVariable v) => v.Name == "@X" && v.DeclaredDataType.BaseType == DataType.INT;
+        private static bool IsXNumeric(SqlDataType v, int? precision, int? scale)
         {
-           return v.Name == "@X" && v.BaseType == DataType.NUMERIC && v.Precision == precision && v.Scale == scale;
+           return v.BaseType == DataType.NUMERIC && v.Precision == precision && v.Scale == scale;
         }
 
     }
