@@ -16,6 +16,7 @@ namespace AntlrCSharpTests {
             SqlListener listener = TestMethods.Init(input);
             VariableDeclarationReporter r = new(listener.Environments);
             Assert.IsTrue(r.Errors.Count == 1);
+
             Assert.IsTrue(r.Errors[0].TokenText == "@X NUMERIC(15,10)");
         }
         [TestMethod]

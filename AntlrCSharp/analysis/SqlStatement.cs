@@ -12,7 +12,48 @@ using static System.Net.Mime.MediaTypeNames;
 namespace AntlrCSharp.analysis
 {
 
+    public enum DataType {
+        USER_DEFINED = -1,
+        BIT = 0,
+        TINYINT = 1,
+        SMALLINT = 2,
+#pragma warning disable CA1069 // Enums values should not be duplicated
 
+        INT = 3,
+        INTEGER = 3,
+#pragma warning restore CA1069 // Enums values should not be duplicated
+        BIGINT = 4,
+        NUMERIC = 5,
+        SMALLMONEY = 6,
+        MONEY = 7,
+        FLOAT = 8,
+        REAL =9 ,
+        DATE = 10,
+        DATETIMEOFFSET = 11,
+        DATETIME = 12,
+        DATETIME2 = 13,
+        SMALLDATETIME = 14,
+        TIME = 15,
+        CHAR = 16,
+        VARCHAR = 17,
+        TEXT = 18,
+        NCHAR = 19,
+        NVARCHAR = 20,
+        NTEXT = 21,
+        BINARY = 22,
+        VARBINARY = 23,
+        IMAGE = 24,
+        CURSOR = 25,
+        ROWVERSION = 26,
+#pragma warning disable CA1069 // Enums values should not be duplicated
+        TIMESTAMP = 26,
+#pragma warning restore CA1069 // Enums values should not be duplicated
+        HIERARCHYID = 27, 
+        UNIQUEIDENTIFIER = 28,
+        SQL_VARIANT = 29,
+        XML = 30,
+        GEOMETRY = 31
+    }
     public interface ITokenText
     {
         String TokenText { get; init; }
@@ -58,7 +99,7 @@ namespace AntlrCSharp.analysis
         public int End { get; init; }
         public string Name { get; init;}
 
-        public string DataType { get; init; }
+        public DataType BaseType { get; init; }
         public int? Precision { get; init; }
         public int? Scale { get; init; }
 
@@ -68,9 +109,15 @@ namespace AntlrCSharp.analysis
             Start = token.Start;
             End = token.End;
             Name = name;
-            DataType = dataType;
+            BaseType = Enum.TryParse(dataType, out DataType dt) ? dt : DataType.USER_DEFINED;
             Precision = precision;
             Scale = scale;
+        }
+
+        public bool SameType(SqlVariable sv) {
+            return  sv.Precision == Precision &&
+                    sv.Scale == Scale &&
+                    sv.BaseType == BaseType;
         }
     }
 

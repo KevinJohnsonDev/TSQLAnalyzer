@@ -12,17 +12,16 @@ namespace AntlrCSharp.analysis
 
         public VariableDeclarationReporter(IEnumerable<Environment> environments) {
             Errors = new();
-            Dictionary<string, string> VariableDataTypes = new();
+            Dictionary<string, SqlVariable> VariableDataTypes = new();
             foreach(var environment in environments){
                 foreach(var variable in environment.Variables){
-                    var dataType = variable.DataType;
                     var name = variable.Name;
                     if (!VariableDataTypes.ContainsKey(name)){
-                        VariableDataTypes.Add(name, dataType);
+                        VariableDataTypes.Add(name, variable);
                         continue;
                     }
                     var expected = VariableDataTypes[variable.Name];
-                    if (variable.DataType != expected){
+                    if (!variable.SameType(expected)){
                         Errors.Add(variable);
                     }
                 }
