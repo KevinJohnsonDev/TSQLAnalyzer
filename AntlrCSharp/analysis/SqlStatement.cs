@@ -143,6 +143,8 @@ namespace AntlrCSharp.analysis {
         }
     }
 
+        public List<DeclaredSqlTable> Tab;LoopEndState;
+        public List<DeclaredSqlTable> Tables;
     public class Environment
     {
         public List<SqlVariable> Variables { get; init; }
