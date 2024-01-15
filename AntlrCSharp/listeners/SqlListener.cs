@@ -10,6 +10,8 @@ namespace AntlrCSharp.listeners
 {
     public class SqlListener : tsqlBaseListener
     {
+        public List<analysis.Environment> Environments { get; init; } = new List<analysis.Environment>();
+        public Catalog DbCatalog { get; init; } = new();
         public String DB { get; set; } = "";
         public bool _inWhere = false;
         private int _caseExpressionDepth = 0;
@@ -18,7 +20,7 @@ namespace AntlrCSharp.listeners
         protected readonly Parser _parser;
         private SqlStatement CurrentStatement { get; set; }
 
-        public List<analysis.Environment> Environments { get; init; } = new List<analysis.Environment>();
+
         private analysis.Environment CurrentEnvironment { get; set; } = new analysis.Environment();
 
         public SqlListener([NN] Parser parser)
@@ -257,11 +259,11 @@ namespace AntlrCSharp.listeners
 
         public override void EnterCreate_table([NN] Create_tableContext ctx) {
            var nameToken = ctx.GetChild<Table_nameContext>(0);
-           var db = nameToken.database?.GetText() ?? "";
-           var schema = nameToken.schema?.GetText() ?? "";
+           var db = nameToken.database?.GetText() ?? DB;
+           var schema = nameToken.schema?.GetText() ?? "dbo";
            var tableName = nameToken.table.GetText();
-           var table = new SqlTable(AsBaseToken(ctx), db, schema, tableName);
-           CurrentStatement.AddTable(table);
+           var columns = new List<DeclaredSqlColumn>();
+            //CurrentStatement.AddTable(table);
 
             /*
              * CREATE --> Token 0 Ignore
@@ -272,20 +274,22 @@ namespace AntlrCSharp.listeners
              * ) --> Last Token
              */
             for (int i = 4; i < ctx.children.Count - 1; i++) { 
-                var child = ctx.children[i];
-                if (child is Column_def_table_constraintsContext columnConstraint) {
-                    foreach(var token in columnConstraint.children) {
-                            if(token is Column_def_table_constraintContext column) {
-                                var colToken = column.children[0] as Column_definitionContext;
-                                var name = colToken.r_id(0).GetText();
-                                var dt = Extracted_Data_Type(colToken.data_type());
-                                var columnToAdd = new SqlColumn(AsBaseToken(colToken), table, dt);
-                                table.Columns.Add(columnToAdd);
-                                
-                            }
-                        }   
+                if (ctx.children[i] is not Column_def_table_constraintsContext columnConstraint) { 
+                    continue; 
                 }
+                foreach(var token in columnConstraint.children) {
+                    if (token is Column_def_table_constraintContext column) {
+                        var colToken = column.children[0] as Column_definitionContext;
+#pragma warning disable CS8602 // Dereference of a possibly null reference, if it's null the parsers broke
+                        var name = colToken.r_id(0).GetText();
+#pragma warning restore CS8602 // Dereference of a possibly null reference.
+                        var dt = Extracted_Data_Type(colToken.data_type());
+                        var columnToAdd = new DeclaredSqlColumn(AsBaseToken(colToken), name, dt);
+                        columns.Add(columnToAdd);
+                    }
+                }         
             }
+            DbCatalog.Add(new DeclaredSqlTable(AsBaseToken(ctx), db, schema, tableName, columns));
         }
 
     }

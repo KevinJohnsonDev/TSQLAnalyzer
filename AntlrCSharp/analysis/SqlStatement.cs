@@ -1,4 +1,6 @@
 ﻿using Antlr4.Runtime;
+using Antlr4.Runtime.Atn;
+using AntlrCSharp.analysis;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -143,15 +145,23 @@ namespace AntlrCSharp.analysis {
         }
     }
 
-        public List<DeclaredSqlTable> Tab;LoopEndState;
-        public List<DeclaredSqlTable> Tables;
+    public class Catalog {
+
+        public List<DeclaredSqlTable> Tables { get; init; }
+        public Catalog() {
+            Tables = new();
+        }
+        public void Add(DeclaredSqlTable table) { 
+            Tables.Add(table); 
+        }
+
+    }
     public class Environment
     {
         public List<SqlVariable> Variables { get; init; }
-
         public Environment()
         {
-            Variables = new List<SqlVariable>();
+            Variables = new();
         }
 
         public void AppendVariable(BaseToken token, string name, SqlDataType sdt)
@@ -232,6 +242,44 @@ namespace AntlrCSharp.analysis {
             return $"{TokenText}:{Start}-{End}\n\tLeft:{Left}\n\tOp:{Op}\n\tRight:{Right}";
         }
     }
+
+    public class DeclaredSqlTable : ITokenText {
+    public string TokenText { get; init; }
+    public int Start { get; init; }
+    public int End { get; init; }
+    public string TableName { get; init; }
+    public string Database { get; init; }
+    public string Schema { get; init; }
+
+    public IList<DeclaredSqlColumn> Columns { get; init; }
+    public DeclaredSqlTable(BaseToken token,string database,string schema, string tableName, IList<DeclaredSqlColumn> columns) {
+        TokenText = token.TokenText;
+        Start = token.Start;
+        End = token.End;
+        Database = database;
+        Schema = schema;
+        TableName = tableName;
+        Columns = columns;
+    }
+
+
+}
+
+public class DeclaredSqlColumn : ITokenText {
+        public string TokenText { get; init; }
+        public int Start { get; init; }
+        public int End { get; init; }
+        public string ColumnName { get; init; }
+
+        public SqlDataType SqlType { get; init; }
+        public DeclaredSqlColumn(BaseToken token,string columnName,SqlDataType sqlType) {
+            TokenText = token.TokenText;
+            Start = token.Start;
+            End = token.End;
+            ColumnName = columnName;
+            SqlType = sqlType;
+        }
+ }
     public class SqlTable : ITokenText, IAliasable, IEquatable<SqlTable?>
     {
         public string Alias { get; set; } = "";
