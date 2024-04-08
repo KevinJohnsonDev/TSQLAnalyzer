@@ -151,6 +151,13 @@ namespace AntlrCSharp.analysis {
         public Catalog() {
             Tables = new();
         }
+
+        public DeclaredSqlTable? Seek(string db,string schema,string tableName) {
+            return Tables.FirstOrDefault((table) => table.Database == db &&
+            table.Schema == schema &&
+            table.TableName == tableName
+);
+        }
         public void Add(DeclaredSqlTable table) { 
             Tables.Add(table); 
         }
@@ -261,6 +268,22 @@ namespace AntlrCSharp.analysis {
         TableName = tableName;
         Columns = columns;
     }
+
+        public void Add(DeclaredSqlColumn col) => Columns.Add(col);
+        public void Alter(DeclaredSqlColumn col) {
+
+            for(int i = 0; i < Columns.Count; i += 1) {
+                if(col.ColumnName == Columns[i].ColumnName) { Columns[i] = col; }
+            }
+        }
+
+        public void Drop(string col) {
+            int i;
+            for ( i = 0; i < Columns.Count; i += 1) {
+                if (col == Columns[i].ColumnName) { break; }
+            }
+            if (i > 0) { Columns.Remove(Columns[i]); }
+        }
 
 
 }

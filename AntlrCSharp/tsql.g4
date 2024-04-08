@@ -249,6 +249,7 @@ alter_table
     : ALTER TABLE table_name (SET '(' LOCK_ESCALATION '=' (AUTO | TABLE | DISABLE) ')'
                              | ADD column_def_table_constraint
                              | DROP CONSTRAINT constraint=r_id
+                             | DROP COLUMN column=r_id
                              | WITH CHECK ADD CONSTRAINT constraint=r_id FOREIGN KEY '(' fk = column_name_list ')' REFERENCES table_name '(' pk = column_name_list')'
                              | CHECK CONSTRAINT constraint=r_id
                              )

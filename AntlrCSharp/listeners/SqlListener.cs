@@ -257,13 +257,38 @@ namespace AntlrCSharp.listeners
         {
         }
 
+        public override void EnterAlter_table([NN] Alter_tableContext ctx) {
+            var nameToken = ctx.GetChild<Table_nameContext>(0);
+            var db = nameToken.database?.GetText() ?? DB;
+            var schema = nameToken.schema?.GetText() ?? "dbo";
+            var tableName = nameToken.table.GetText();
+            var target = DbCatalog.Seek(db, schema, tableName);
+            if (target == null) return; /*should probably emit a warning*/
+            var isAlter = ctx.ALTER() != null;
+            var isAdd = ctx.ADD() != null;
+            var isDrop = ctx.DROP() != null;
+            var isColumn = ctx.column != null;
+            if (isAlter && isAdd) {
+                var column = ExtractedColumnDefinition(ctx.column_def_table_constraint());
+                target.Add(column);
+            }
+            else if (isAlter && isDrop && isColumn) {
+                var column = ctx.r_id().GetText();
+                target.Drop(column);
+                Console.Write(column.ToString());
+            }
+            else if(isAlter) {
+                var column = ExtractedColumnDefinition(ctx.column_def_table_constraint());
+                target.Alter(column);     
+            }
+        }
+
         public override void EnterCreate_table([NN] Create_tableContext ctx) {
            var nameToken = ctx.GetChild<Table_nameContext>(0);
            var db = nameToken.database?.GetText() ?? DB;
            var schema = nameToken.schema?.GetText() ?? "dbo";
            var tableName = nameToken.table.GetText();
            var columns = new List<DeclaredSqlColumn>();
-            //CurrentStatement.AddTable(table);
 
             /*
              * CREATE --> Token 0 Ignore
@@ -279,20 +304,24 @@ namespace AntlrCSharp.listeners
                 }
                 foreach(var token in columnConstraint.children) {
                     if (token is Column_def_table_constraintContext column) {
-                        var colToken = column.children[0] as Column_definitionContext;
-#pragma warning disable CS8602 // Dereference of a possibly null reference, if it's null the parsers broke
-                        var name = colToken.r_id(0).GetText();
-#pragma warning restore CS8602 // Dereference of a possibly null reference.
-                        var dt = Extracted_Data_Type(colToken.data_type());
-                        var columnToAdd = new DeclaredSqlColumn(AsBaseToken(colToken), name, dt);
-                        columns.Add(columnToAdd);
+                        columns.Add(ExtractedColumnDefinition(column));
                     }
                 }         
             }
             DbCatalog.Add(new DeclaredSqlTable(AsBaseToken(ctx), db, schema, tableName, columns));
         }
-
+        private DeclaredSqlColumn ExtractedColumnDefinition(Column_def_table_constraintContext column) {
+            var colToken = column.children[0] as Column_definitionContext;
+#pragma warning disable CS8602 // Dereference of a possibly null reference, if it's null the parsers broke
+            var name = colToken.r_id(0).GetText();
+#pragma warning restore CS8602 // Dereference of a possibly null reference.
+            var dt = Extracted_Data_Type(colToken.data_type());
+            return new DeclaredSqlColumn(AsBaseToken(colToken), name, dt);
+        }
     }
+
+
+
     public class TokenLoggingSqlListener : SqlListener
     {
         public TokenLoggingSqlListener([NN] Parser parser):base(parser){}
