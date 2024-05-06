@@ -303,11 +303,11 @@ public class DeclaredSqlColumn : ITokenText {
             SqlType = sqlType;
         }
  }
-    public class SqlTable : ITokenText, IAliasable, IEquatable<SqlTable?>
-    {
+    public class SqlTable : ITokenText, IAliasable, IEquatable<SqlTable?> {
         public string Alias { get; set; } = "";
         public string TokenText { get; init; }
         public int Start { get; init; }
+        public string FQN { get; init; }
         public int End { get; init; }
         public bool UsedAs { get; set; }
         public string Database { get; init; }
@@ -324,6 +324,9 @@ public class DeclaredSqlColumn : ITokenText {
             TokenText = token.TokenText;
             Start = token.Start;
             End = token.End;
+            var prefix = String.IsNullOrWhiteSpace(Database) ? "" : $"{Database}.";
+            FQN = $"{prefix}{Schema}.{TableName}";
+
         }
 
         public SqlTable(BaseToken token, string schema, string tableName)
@@ -335,6 +338,7 @@ public class DeclaredSqlColumn : ITokenText {
             TokenText = token.TokenText;
             Start = token.Start;
             End = token.End;
+            FQN = $"{Schema}.{TableName}";
         }
 
         public override string ToString() => $"{TokenText}:{Start}-{End}\n\tDatabase:{Database}\n\tSchema:{Schema}\n\tTableName:{TableName}\n\tAlias:{Alias}\n\tUsedAs:{UsedAs}";

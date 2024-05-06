@@ -7,6 +7,11 @@ using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace AntlrCSharp.analysis
 {
+    /*
+     * The idea of this reporter is to report queries 
+     * whose subqueries go deep enough to potentially severely impact performance
+     * across various SQL Batches and Procedures
+     */
     public class SubqueryDepthReporter
     {
         public List<ISargable> Errors { get; init; }

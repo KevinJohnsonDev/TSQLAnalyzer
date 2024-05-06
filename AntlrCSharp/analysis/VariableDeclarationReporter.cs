@@ -6,6 +6,10 @@ using System.Threading.Tasks;
 
 namespace AntlrCSharp.analysis
 {
+    /*
+     * The idea of this reporter is to report variable names that are used inconsistently
+     * across various SQL Batches and Procedures
+     */
     public class VariableDeclarationReporter
     {
         public List<SqlVariable> Errors { get; init; }
