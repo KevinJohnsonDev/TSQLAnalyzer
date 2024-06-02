@@ -8,19 +8,19 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include=".antlr\tsqlBaseListener.cs" />
-    <Compile Include=".antlr\tsqlBaseVisitor.cs" />
     <Compile Include=".antlr\tsqlLexer.cs" />
-    <Compile Include=".antlr\tsqlListener.cs" />
     <Compile Include=".antlr\tsqlParser.cs" />
-    <Compile Include=".antlr\tsqlVisitor.cs" />
+    <Compile Include=".antlr\TSqlParserBaseListener.cs" />
+    <Compile Include=".antlr\TSqlParserBaseVisitor.cs" />
+    <Compile Include=".antlr\TSqlParserListener.cs" />
+    <Compile Include=".antlr\TSqlParserVisitor.cs" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Include=".antlr\tsql.interp" />
-    <None Include=".antlr\tsql.tokens" />
     <None Include=".antlr\tsqlLexer.interp" />
     <None Include=".antlr\tsqlLexer.tokens" />
+    <None Include=".antlr\TSqlParser.interp" />
+    <None Include=".antlr\TSqlParser.tokens" />
   </ItemGroup>
 
   <ItemGroup>

@@ -4,11 +4,11 @@ using AntlrCSharp.analysis;
 using AntlrCSharp.listeners;
 using System.ComponentModel.DataAnnotations;
 using System.Xml.Linq;
-using static tsqlParser;
+using static TSqlParser;
 using NN = System.Diagnostics.CodeAnalysis.NotNullAttribute;
 namespace AntlrCSharp.listeners
 {
-    public class SqlListener : tsqlBaseListener
+    public class SqlListener : TSqlParserBaseListener
     {
         public List<analysis.Environment> Environments { get; init; } = new List<analysis.Environment>();
         public Catalog DbCatalog { get; init; } = new();
@@ -61,17 +61,17 @@ namespace AntlrCSharp.listeners
 
 
 
-        public override void EnterSql_clause([NN] Sql_clauseContext context)
+        public override void EnterSql_clauses([NN] Sql_clausesContext context)
         {
             CurrentStatement = new SqlStatement(AsBaseToken(context));
 
         }
-        public override void ExitSql_clause([NN] Sql_clauseContext context)
+        public override void ExitSql_clauses([NN] Sql_clausesContext context)
         {
             Statements.Add(CurrentStatement);
 
         }
-        public override void EnterUse_statement([NN] tsqlParser.Use_statementContext context)
+        public override void EnterUse_statement([NN] TSqlParser.Use_statementContext context)
         {
             DB = context.Stop.Text;
         }
@@ -88,8 +88,16 @@ namespace AntlrCSharp.listeners
 
         public override void ExitSelect_list_elem([NN] Select_list_elemContext context)
         {
-            if (context.column_alias() is not null) { 
-                CurrentStatement.AppendAlias(context.column_alias().GetFullText());
+            if (context.expression_elem() is not null) {
+                var asAlias = context.expression_elem().as_column_alias();
+                var alias = context.expression_elem().column_alias();
+                if (asAlias != null) {
+                    CurrentStatement.AppendAlias(asAlias.column_alias().GetFullText());
+                }
+                else if(alias != null) {
+                    CurrentStatement.AppendAlias(alias.GetFullText());
+
+                }
             }
         }
 
@@ -118,11 +126,11 @@ namespace AntlrCSharp.listeners
                 Console.WriteLine("Error in ExitSearch_cond_pred, no child");
                 return;
             }
-            if (child is Binary_operator_expression2Context c)
+            if (child is Binary_operator_expressionContext c)
             {
                 var left = c.left;
                 var right = c.right;
-                var op = c.op.GetText();
+                var op = c.op.Text;
                 var rightText = right is null ? (op == "IS" ? "NULL" : "") : right.GetText();
                 var leftOp = new SqlOperand(AsBaseToken(left), left is Function_call_expressionContext, FunctionOverConstant(left),_inWhere,_caseExpressionDepth > 0, _subqueryDepth);
                 var rightOp = new SqlOperand(AsBaseToken(right,rightText), right is Function_call_expressionContext, FunctionOverConstant(right), _inWhere, _caseExpressionDepth > 0, _subqueryDepth);
@@ -165,6 +173,49 @@ namespace AntlrCSharp.listeners
 
 
             }
+            else if (child is PredicateContext pc) {
+                if(pc.ChildCount == 3) {
+                    var leftOp = new SqlOperand(AsBaseToken(pc.children[0] as ParserRuleContext), pc.children[0] is Function_call_expressionContext, FunctionOverConstant(pc.children[0] as ExpressionContext), _inWhere, pc.children[0] is Case_expression_stubContext, _subqueryDepth);
+                    var op = pc.children[1].GetText();
+                    var rightOp = new SqlOperand(AsBaseToken(pc.children[2] as ParserRuleContext), pc.children[2] is Function_call_expressionContext, FunctionOverConstant(pc.children[2] as ExpressionContext), _inWhere, pc.children[2] is Case_expression_stubContext, _subqueryDepth);
+                    CurrentStatement.AppendPredicate(new SqlPredicate(AsBaseToken(pc), leftOp, rightOp, op, _inWhere));
+
+                }
+                else if(pc.ChildCount == 5) {
+                    if (pc.children[0] is Column_ref_expressionContext) {
+                        var leftOp = new SqlOperand(AsBaseToken(pc.children[0] as ParserRuleContext), false, FunctionOverConstant(pc.children[0] as ExpressionContext), _inWhere, pc.children[0] is Case_expression_stubContext, _subqueryDepth);
+                        var op = "";
+                        var sub = pc.subquery();
+                        if (sub != null) {
+                            if (pc.IN() != null) { op += "IN"; }
+                            if (pc.ANY() != null) { op += "ANY"; }
+                            if (pc.ALL() != null) { op += "ALL"; }
+                            if (pc.NOT() != null) { op = "NOT " + op; }
+                            var allFunctionsOverConstant = true; //Yes Not Exhaustive Check yet
+                            var subqueryFunctions = FindInstancesOfParentType<Function_call_expressionContext>(sub.children);
+                            var hasSubqueryFunctions = subqueryFunctions.Length > 0;
+                            if (subqueryFunctions.Length > 0) {
+                                foreach (var fun in subqueryFunctions) {
+                                    allFunctionsOverConstant = FunctionOverConstant(fun);
+                                    if (!allFunctionsOverConstant) { break; }
+                                }
+                            }
+                            var rightOp = new SqlOperand(
+                                         AsBaseToken(sub),
+                                         hasSubqueryFunctions,
+                                         allFunctionsOverConstant,
+                                         _inWhere,
+                                         _caseExpressionDepth > 0,
+                                         _subqueryDepth
+                                     )
+                                ;
+                            CurrentStatement.AppendPredicate(new SqlPredicate(AsBaseToken(pc), leftOp, rightOp, op, _inWhere));
+
+                        }
+                    }
+                }
+            }
+
         }
 
         private TParentType[] FindInstancesOfParentType<TParentType>(IList<IParseTree> children)
@@ -194,11 +245,13 @@ namespace AntlrCSharp.listeners
             return result.ToArray();
         }
 
-        private static bool FunctionOverConstant(ExpressionContext exp)
+        private  bool FunctionOverConstant(ExpressionContext exp)
         {
+            
             if (exp is null) { return false; }
+
             if (exp.children.Count == 0) { return false; };
-            if (exp.children[0] is Standard_callContext sc)
+            if (exp.children[0] is SCALAR_FUNCTIONContext sc)
             {
                 if (sc.children.Count < 2) { return false; }
 
@@ -207,27 +260,41 @@ namespace AntlrCSharp.listeners
                     return elc.children[0] is Primitive_expressionContext;
                 }
             }
-            else if (exp is Primitive_expressionContext)
+            else if (exp.children[0] is BUILT_IN_FUNCContext bi) {
+                if (bi.children.Count == 1) {
+                    if (bi.children[0] is RTRIMContext rtc) {
+                        return FindInstancesOfParentType<Primitive_expression_stubContext>(rtc.children).Length > 0;
+                    }
+                }
+                if (bi.children.Count < 2) { return false; }
+
+                if (bi.children[2] is Expression_listContext elc) {
+                    return elc.children[0] is Primitive_expressionContext;
+                }
+            }
+            else if (exp is Primitive_expression_stubContext)
             {
                 return true;
             }
             return false;
         }
 
-        public override void ExitTable_source_item_name([Antlr4.Runtime.Misc.NotNull] Table_source_item_nameContext context)
+
+
+        public override void ExitTable_source_item([Antlr4.Runtime.Misc.NotNull] Table_source_itemContext context)
         {
             var table = "";
             var schema = "dbo";
             var database = "";
-            if (context.table_name() is not null) { table = context.table_name().GetText(); }
+            if (context.full_table_name() is not null) { table = context.full_table_name().GetFullText(); }
             var parts = table.Split(".");
             var plen = parts.Length;
             var tableName = parts[plen - 1]; 
             if(parts.Length > 1) { schema = parts[plen - 2]; }
             if (parts.Length > 2) {  database = parts[plen - 3]; }
             CurrentStatement.AddTable(AsBaseToken(context),database, schema, tableName);
-            if (context.table_alias() is not null) { 
-                var alias = context.table_alias().GetText();
+            if (context.as_table_alias() is not null) { 
+                var alias = context.as_table_alias().GetText();
                 var usedAS = alias.Substring(0, 2) == "AS";
                 if (usedAS) { alias = alias.Substring(2); }
                 CurrentStatement.AppendAlias(alias,usedAS);
@@ -235,7 +302,7 @@ namespace AntlrCSharp.listeners
 
         }
 
-        public override void EnterDeclare_local([Antlr4.Runtime.Misc.NotNull] Declare_localContext context)
+        public override void EnterDeclare_statement([Antlr4.Runtime.Misc.NotNull] Declare_statementContext context)
         {   /*DataTypes Don't have about spaces so we can use GetText*/
             var dataType = Extracted_Data_Type(context.data_type());
             var name = context.LOCAL_ID().GetText();
@@ -267,18 +334,18 @@ namespace AntlrCSharp.listeners
             var isAlter = ctx.ALTER() != null;
             var isAdd = ctx.ADD() != null;
             var isDrop = ctx.DROP() != null;
-            var isColumn = ctx.column != null;
+            var isColumn = ctx.COLUMN != null;
             if (isAlter && isAdd) {
-                var column = ExtractedColumnDefinition(ctx.column_def_table_constraint());
+                var column = ExtractedColumnDefinition(ctx.column_def_table_constraints().column_def_table_constraint(0));
                 target.Add(column);
             }
             else if (isAlter && isDrop && isColumn) {
-                var column = ctx.r_id().GetText();
+                var column = ctx.id_(0).ID().GetText();
                 target.Drop(column);
                 Console.Write(column.ToString());
             }
             else if(isAlter) {
-                var column = ExtractedColumnDefinition(ctx.column_def_table_constraint());
+                var column = ExtractedColumnDefinition(ctx.column_def_table_constraints().column_def_table_constraint(0));
                 target.Alter(column);     
             }
         }
@@ -312,8 +379,11 @@ namespace AntlrCSharp.listeners
         }
         private DeclaredSqlColumn ExtractedColumnDefinition(Column_def_table_constraintContext column) {
             var colToken = column.children[0] as Column_definitionContext;
+
 #pragma warning disable CS8602 // Dereference of a possibly null reference, if it's null the parsers broke
-            var name = colToken.r_id(0).GetText();
+            var nameID = colToken.id_();
+            var IDID = nameID.ID();
+            var name = IDID.GetText();
 #pragma warning restore CS8602 // Dereference of a possibly null reference.
             var dt = Extracted_Data_Type(colToken.data_type());
             return new DeclaredSqlColumn(AsBaseToken(colToken), name, dt);

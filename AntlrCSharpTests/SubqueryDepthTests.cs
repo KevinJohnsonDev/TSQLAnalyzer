@@ -17,11 +17,11 @@ namespace AntlrCSharpTests
         private String _sampleQuery =  @"
             SELECT 1 AS ID 
             FROM (
-                SELECT 1 AS ID 
+                SELECT 1 AS ID2 
                 FROM (
-                    SELECT 1 AS ID 
+                    SELECT 1 AS ID3
                     FROM (
-                        SELECT 1 AS ID
+                        SELECT 1 AS ID4
                     ) AS L3
                 ) AS L2
             ) AS L1 ";

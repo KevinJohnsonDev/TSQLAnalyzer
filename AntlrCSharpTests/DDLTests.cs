@@ -38,8 +38,8 @@ namespace AntlrCSharpTests {
             )
             GO
              CREATE TABLE extra.C(
-                CID INT NOT NULL CONSTRAINT PK_dbo_B_ID PRIMARY KEY,
-                Sample INT NOT NULL,
+                CID INT NOT NULL CONSTRAINT PK_dbo_C_ID PRIMARY KEY,
+                StudentID DATETIME NOT NULL
             )               ";
             var result = TestMethods.Init(query);
             var catalog = result.DbCatalog;

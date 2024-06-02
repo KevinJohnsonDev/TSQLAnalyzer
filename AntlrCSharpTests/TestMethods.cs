@@ -14,9 +14,9 @@ namespace AntlrCSharpTests
         public static SqlListener Init(string input)
         {
             AntlrInputStream inputStream = new(input);
-            tsqlLexer tsqlLexer = new(inputStream);
+            TSqlLexer tsqlLexer = new(inputStream);
             CommonTokenStream commonTokenStream = new(tsqlLexer);
-            tsqlParser sqlParser = new(commonTokenStream);
+            TSqlParser sqlParser = new(commonTokenStream);
             TokenLoggingSqlListener listener = new(sqlParser);
             ParseTreeWalker.Default.Walk(listener, sqlParser.tsql_file());
             return listener;
