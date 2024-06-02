@@ -2,7 +2,9 @@
 
 TSQLParser is an open source, TSQL parser built with ANTLR4.
 
-The parser was compiled using the ANTLR4 grammar syntax support vscode plugin that was developed by Mike Lischke.
+The parser was originally compiled using the ANTLR4 grammar syntax support vscode plugin that was developed by Mike Lischke.
+
+However it just uses ANTLR4 currently
 
 The TSQL grammar was derived from the official [ANTLR4 TSQL Grammar](
 https://github.com/antlr/grammars-v4/blob/master/sql/tsql/TSqlParser.g4)
