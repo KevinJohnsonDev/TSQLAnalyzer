@@ -52,6 +52,15 @@ namespace TSQLParserLib.listeners
 
 
 
+        public override void EnterInsert_statement([Antlr4.Runtime.Misc.NotNull] Insert_statementContext context) {
+            CurrentStatement = new SqlStatement(AsBaseToken(context));
+            Ddl_objectContext ddlObj = context.ddl_object();
+            Full_table_nameContext tableName = ddlObj.full_table_name();
+            ExtractAndAddTableItem(AsBaseToken(context), tableName, null);
+        }
+
+
+
         public override void EnterBatch([Antlr4.Runtime.Misc.NotNull] BatchContext context)
         {
             Environments.Add(new analysis.Environment());
@@ -281,25 +290,28 @@ namespace TSQLParserLib.listeners
 
 
 
-        public override void ExitTable_source_item([Antlr4.Runtime.Misc.NotNull] Table_source_itemContext context)
-        {
+        public override void ExitTable_source_item([Antlr4.Runtime.Misc.NotNull] Table_source_itemContext context) {
+            ExtractAndAddTableItem(AsBaseToken(context),context.full_table_name(),context.as_table_alias());
+
+        }
+
+        private void ExtractAndAddTableItem(BaseToken context,Full_table_nameContext ftn,As_table_aliasContext? ata) {
             var table = "";
             var schema = "dbo";
             var database = "";
-            if (context.full_table_name() is not null) { table = context.full_table_name().GetFullText(); }
+            if (ftn is not null) { table = ftn.GetFullText(); }
             var parts = table.Split(".");
             var plen = parts.Length;
-            var tableName = parts[plen - 1]; 
-            if(parts.Length > 1) { schema = parts[plen - 2]; }
-            if (parts.Length > 2) {  database = parts[plen - 3]; }
-            CurrentStatement.AddTable(AsBaseToken(context),database, schema, tableName);
-            if (context.as_table_alias() is not null) { 
-                var alias = context.as_table_alias().GetText();
+            var tableName = parts[plen - 1];
+            if (parts.Length > 1) { schema = parts[plen - 2]; }
+            if (parts.Length > 2) { database = parts[plen - 3]; }
+            CurrentStatement.AddTable(context, database, schema, tableName);
+            if (ata is not null) {
+                var alias = ata.GetText();
                 var usedAS = alias.Substring(0, 2) == "AS";
                 if (usedAS) { alias = alias.Substring(2); }
-                CurrentStatement.AppendAlias(alias,usedAS);
+                CurrentStatement.AppendAlias(alias, usedAS);
             }
-
         }
 
         public override void EnterDeclare_statement([Antlr4.Runtime.Misc.NotNull] Declare_statementContext context)

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static TSqlParser;
 
 namespace TSQLParserLibTests {
     [TestClass]
@@ -59,6 +60,21 @@ namespace TSQLParserLibTests {
         Assert.IsTrue(tur.Tables.Count == 2);
             Assert.IsTrue(tur.Tables.ContainsKey("dbo.A"));
             Assert.IsTrue(tur.Tables.ContainsKey("SampleDB.dbo.A"));
+        }
+
+        [TestMethod]
+
+        public void TableUsageReporterCountsInsertStatements() {
+            var fullyQualifiedWithImplicitSameName = @"
+        INSERT INTO dbo.B(ID,Val)
+        SELECT ID,BVal FROM dbo.C;
+        ";
+            SqlListener listener = TestMethods.Init(fullyQualifiedWithImplicitSameName);
+            TableUsageReporter tur = new(listener.Statements);
+            Assert.IsTrue(tur.Tables.Count == 2);
+            Assert.IsTrue(tur.Tables.ContainsKey("dbo.B"));
+            Assert.IsTrue(tur.Tables.ContainsKey("dbo.C"));
+
         }
 
 

@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "TSQLParserClient": {
+      "commandName": "Project",
+      "commandLineArgs": "\"..\\..\\..\\Examples\\SampleStatements.sql\""
+    }
+  }
+}
