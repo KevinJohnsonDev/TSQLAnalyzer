@@ -4,10 +4,10 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using AntlrCSharp.analysis;
-using DataType = AntlrCSharp.analysis.DataType;
+using TSQLParserLib.analysis;
+using DataType = TSQLParserLib.analysis.DataType;
 
-namespace AntlrCSharpTests {
+namespace TSQLParserLibTests {
     [TestClass]
     public class DDLTests {
 

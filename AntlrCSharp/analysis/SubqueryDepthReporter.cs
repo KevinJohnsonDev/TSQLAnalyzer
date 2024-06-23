@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
-namespace AntlrCSharp.analysis
+namespace TSQLParserLib.analysis
 {
     /*
      * The idea of this reporter is to report queries 

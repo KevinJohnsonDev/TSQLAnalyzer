@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AntlrCSharp.analysis
+namespace TSQLParserLib.analysis
 {
     /*
      * The idea of this reporter is to report variable names that are used inconsistently

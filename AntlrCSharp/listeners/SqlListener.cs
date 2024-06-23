@@ -1,12 +1,12 @@
 ﻿using Antlr4.Runtime;
 using Antlr4.Runtime.Tree;
-using AntlrCSharp.analysis;
-using AntlrCSharp.listeners;
+using TSQLParserLib.analysis;
+using TSQLParserLib.listeners;
 using System.ComponentModel.DataAnnotations;
 using System.Xml.Linq;
 using static TSqlParser;
 using NN = System.Diagnostics.CodeAnalysis.NotNullAttribute;
-namespace AntlrCSharp.listeners
+namespace TSQLParserLib.listeners
 {
     public class SqlListener : TSqlParserBaseListener
     {

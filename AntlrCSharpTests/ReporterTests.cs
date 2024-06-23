@@ -1,14 +1,14 @@
 ﻿using Antlr4.Runtime.Tree;
 using Antlr4.Runtime;
-using AntlrCSharp.listeners;
-using AntlrCSharp.analysis;
+using TSQLParserLib.listeners;
+using TSQLParserLib.analysis;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AntlrCSharpTests
+namespace TSQLParserLibTests
 {
     [TestClass]
     public class ReporterTests

@@ -4,7 +4,7 @@ using System;
 using System.Threading.Tasks;
 
 
-namespace AntlrCSharp.listeners
+namespace TSQLParserLib.listeners
 {
     public static class ExtensionMethods 
     {

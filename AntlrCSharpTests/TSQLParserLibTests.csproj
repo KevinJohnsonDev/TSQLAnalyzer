@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\AntlrCSharp\AntlrCSharp.csproj" />
+    <ProjectReference Include="..\AntlrCSharp\TSQLParserLib.csproj" />
   </ItemGroup>
 
 </Project>

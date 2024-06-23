@@ -1,14 +1,14 @@
 ﻿using Antlr4.Runtime.Tree;
 using Antlr4.Runtime;
-using AntlrCSharp.listeners;
+using TSQLParserLib.listeners;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using AntlrCSharp.analysis;
+using TSQLParserLib.analysis;
 
-namespace AntlrCSharpTests
+namespace TSQLParserLibTests
 {
     [TestClass]
     public class SubqueryDepthTests

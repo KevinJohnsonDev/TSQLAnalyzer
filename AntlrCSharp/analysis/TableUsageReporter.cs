@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AntlrCSharp.analysis {
+namespace TSQLParserLib.analysis {
     public class TableUsageReporter {
 
         public Dictionary<String, List<SqlStatement>> Tables { get; init; } = new();

@@ -1,6 +1,6 @@
 ﻿using Antlr4.Runtime;
 using Antlr4.Runtime.Atn;
-using AntlrCSharp.analysis;
+using TSQLParserLib.analysis;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 using static Antlr4.Runtime.Atn.SemanticContext;
 using static System.Net.Mime.MediaTypeNames;
 
-namespace AntlrCSharp.analysis {
+namespace TSQLParserLib.analysis {
 
     public enum DataType {
         USER_DEFINED = -1,

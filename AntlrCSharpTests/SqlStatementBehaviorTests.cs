@@ -1,12 +1,12 @@
-﻿using AntlrCSharp.analysis;
-using AntlrCSharp.listeners;
+﻿using TSQLParserLib.analysis;
+using TSQLParserLib.listeners;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AntlrCSharpTests
+namespace TSQLParserLibTests
 {
     [TestClass]
     public class SqlStatementBehaviorTests
