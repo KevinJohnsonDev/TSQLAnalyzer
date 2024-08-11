@@ -76,6 +76,23 @@ namespace TSQLParserLibTests {
             Assert.IsTrue(tur.Tables.ContainsKey("dbo.C"));
 
         }
+        [TestMethod]
+
+        public void TableUsageReporterCountsUpdateStatements() {
+            var fullyQualifiedWithImplicitSameName = @"
+        UPDATE B
+        SET VAL = VAL 
+        FROM dbo.B AS B
+        JOIN dbo.C AS C
+        WHERE B.ID = C.ID;
+        ";
+            SqlListener listener = TestMethods.Init(fullyQualifiedWithImplicitSameName);
+            TableUsageReporter tur = new(listener.Statements);
+            Assert.IsTrue(tur.Tables.Count == 2);
+            Assert.IsTrue(tur.Tables.ContainsKey("dbo.B"));
+            Assert.IsTrue(tur.Tables.ContainsKey("dbo.C"));
+
+        }
 
 
     }

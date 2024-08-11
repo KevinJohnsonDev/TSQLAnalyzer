@@ -422,6 +422,9 @@ public class DeclaredSqlColumn : ITokenText {
         public Boolean UsesDistinct { get; set; }
         public  List<SqlPredicate> Predicates { get; } = new List<SqlPredicate>();
         public List<Subquery> Subqueries { get; } = new List<Subquery>();
+        public SqlTable? UpdateTarget { get; }
+
+        private string? _unresolvedUpdateTarget;
 
         public List<SqlTable> Tables { get; } = new List<SqlTable>();
         public List<SqlColumn> Columns { get; } = new List<SqlColumn>();
@@ -525,6 +528,10 @@ public class DeclaredSqlColumn : ITokenText {
         {
             CurrentAliasable = PendingSubqueries.Pop();
             CurrentSubquery = (Subquery)CurrentAliasable;
+        }
+
+        public void EnterDDL_Object() {
+
         }
 
 
