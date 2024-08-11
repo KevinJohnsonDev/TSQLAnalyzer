@@ -48,5 +48,9 @@ You can submit a pull request or file a bug report, I'll get to it when I can, u
 
 If it picks up steam, I'll start putting more time into it.
 
+#Rebuilding parser
+
+java -jar antlr-4.13.1-complete.jar -Dlanguage=CSharp -listener -visitor -o generated  
+"{PathToTSqLLexer}\TSqlLexer.g4"  "{PathToTSqlParser}\TSqlParser.g4"
 
 
