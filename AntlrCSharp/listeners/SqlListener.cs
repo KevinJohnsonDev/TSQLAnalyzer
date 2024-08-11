@@ -263,10 +263,14 @@ namespace TSQLParserLib.listeners
             if (exp.children[0] is SCALAR_FUNCTIONContext sc)
             {
                 if (sc.children.Count < 2) { return false; }
-
                 if (sc.children[2] is Expression_listContext elc)
                 {
                     return elc.children[0] is Primitive_expressionContext;
+                }
+                if (sc.children[2] is Expression_list_Context pesc) {
+                    if (pesc.children[0] is Primitive_expression_stubContext) {
+                        return true;
+                    }
                 }
             }
             else if (exp.children[0] is BUILT_IN_FUNCContext bi) {
@@ -316,9 +320,23 @@ namespace TSQLParserLib.listeners
 
         public override void EnterDeclare_statement([Antlr4.Runtime.Misc.NotNull] Declare_statementContext context)
         {   /*DataTypes Don't have about spaces so we can use GetText*/
-            var dataType = Extracted_Data_Type(context.data_type());
-            var name = context.LOCAL_ID().GetText();
-            CurrentEnvironment.AppendVariable(AsBaseToken(context), name, dataType);
+            var dataType = context.data_type();
+            if(dataType != null) {
+                var name = context.LOCAL_ID().GetText();
+                var dtc = Extracted_Data_Type(dataType);
+                CurrentEnvironment.AppendVariable(AsBaseToken(context), name, dtc);
+                return;
+            }
+            var loc = context.declare_local();
+            if(loc != null) {
+                foreach(var declaration in loc) {
+                    var name = declaration.LOCAL_ID().GetText();
+                    var dtc = Extracted_Data_Type(declaration.data_type());
+                    CurrentEnvironment.AppendVariable(AsBaseToken(context), name, dtc);
+                }
+                return;
+            }
+            throw new Exception("Declaration not handled");
         }   
 
         
