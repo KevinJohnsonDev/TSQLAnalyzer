@@ -1,14 +1,8 @@
 ﻿using Antlr4.Runtime.Tree;
 using Antlr4.Runtime;
 using TSQLParserLib.listeners;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace TSQLParserLibTests
-{
+namespace TSQLParserLibTests {
     public static class TestMethods
     {
         public static SqlListener Init(string input)

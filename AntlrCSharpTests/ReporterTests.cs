@@ -1,15 +1,7 @@
-﻿using Antlr4.Runtime.Tree;
-using Antlr4.Runtime;
-using TSQLParserLib.listeners;
+﻿using TSQLParserLib.listeners;
 using TSQLParserLib.analysis;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace TSQLParserLibTests
-{
+namespace TSQLParserLibTests {
     [TestClass]
     public class ReporterTests
     {

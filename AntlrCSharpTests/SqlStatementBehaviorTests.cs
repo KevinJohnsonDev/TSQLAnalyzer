@@ -1,13 +1,6 @@
-﻿using TSQLParserLib.analysis;
-using TSQLParserLib.listeners;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using TSQLParserLib.listeners;
 
-namespace TSQLParserLibTests
-{
+namespace TSQLParserLibTests {
     [TestClass]
     public class SqlStatementBehaviorTests
     {

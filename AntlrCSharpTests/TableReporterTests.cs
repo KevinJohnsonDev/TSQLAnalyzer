@@ -1,11 +1,5 @@
 ﻿using TSQLParserLib.analysis;
 using TSQLParserLib.listeners;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static TSqlParser;
 
 namespace TSQLParserLibTests {
     [TestClass]
@@ -93,7 +87,22 @@ namespace TSQLParserLibTests {
             Assert.IsTrue(tur.Tables.ContainsKey("dbo.C"));
 
         }
+        [TestMethod]
 
+        public void TableUsageReporterCountDeleteStatements() {
+            var fullyQualifiedWithImplicitSameName = @"
+        DELETE B
+        FROM dbo.B AS B
+        JOIN dbo.C AS C
+        WHERE B.ID = C.ID;
+        ";
+            SqlListener listener = TestMethods.Init(fullyQualifiedWithImplicitSameName);
+            TableUsageReporter tur = new(listener.Statements);
+            Assert.IsTrue(tur.Tables.Count == 2);
+            Assert.IsTrue(tur.Tables.ContainsKey("dbo.B"));
+            Assert.IsTrue(tur.Tables.ContainsKey("dbo.C"));
+
+        }
 
     }
 }
