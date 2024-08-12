@@ -2,6 +2,7 @@
 using Antlr4.Runtime;
 using Antlr4.Runtime.Tree;
 using System.Text;
+using TSQLParserLib.analysis;
 using TSQLParserLib.listeners;
 
 
@@ -15,26 +16,33 @@ try {
     }
 
 
-    StringBuilder sb = new StringBuilder();
-    foreach(string fileName in argumentOption.FileNames) {
+    TokenLoggingSqlListener? listener = null;
+    foreach (string fileName in argumentOption.FileNames) {
         string fileContents = File.ReadAllText(fileName);
+        AntlrInputStream inputStream = new(fileContents);
+        TSqlLexer tsqlLexer = new(inputStream);
+        CommonTokenStream commonTokenStream = new(tsqlLexer);
+        TSqlParser sqlParser = new(commonTokenStream);
+        listener ??= new(sqlParser);
+        listener.FileName = fileName;
+        ParseTreeWalker.Default.Walk(listener, sqlParser.tsql_file());
 
-        sb.Append(fileContents);
-        sb.AppendLine();
     }
-    string input = sb.ToString();
-    AntlrInputStream inputStream = new AntlrInputStream(input);
-    TSqlLexer tsqlLexer = new(inputStream);
-    CommonTokenStream commonTokenStream = new CommonTokenStream(tsqlLexer);
-    TSqlParser sqlParser = new(commonTokenStream);
-    TokenLoggingSqlListener listener = new TokenLoggingSqlListener(sqlParser);
+    if(listener == null) { throw new InvalidOperationException("After Parsing File, Listener does not exist"); }
+    var subReporter = new SubqueryDepthReporter(listener.Statements);
+    var sargabilityReporter = new SargabilityReporter(listener.Statements);
 
-    ParseTreeWalker.Default.Walk(listener, sqlParser.tsql_file());
-
-    foreach (var statement in listener.Statements) {
-        Console.WriteLine(statement);
+    StringBuilder sb = new();
+    sb.AppendLine("Sargability Errors:");
+    foreach (var Error in sargabilityReporter.Errors) {
+        sb.AppendLine($"{Error.ToString()}");
+    }
+    sb.AppendLine("Subquery Depth Errors");
+    foreach (var Error in subReporter.Errors) {
+        sb.AppendLine($"{Error.ToString()}");
     }
 
+    Console.WriteLine(sb.ToString());
 }
 catch (Exception ex) {
     Console.WriteLine("Error: " + ex);

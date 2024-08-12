@@ -53,7 +53,7 @@ FROM	dbo.MakeModelYears AS MMY
 CROSS JOIN  dbo.Engines AS E
 JOIN dbo.ModelYears AS MY ON MMY.ModelYearID = MY.ModelYearID
 WHERE	MY.ModelYear <> '2015' 
-	AND MakeID <> 2;
+	AND TRIM(MakeID) <> 2;
 
 INSERT INTO dbo.Automobiles(MakeModelYearID,BodyStyleTrimOptionID,EngineID)
 SELECT	MMYE.MakeModelYearID,

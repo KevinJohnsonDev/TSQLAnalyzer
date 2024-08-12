@@ -29,9 +29,10 @@ namespace TSQLParserLib.listeners
 
         }
 
+        public string FileName { get; set; } = "";
+
         private static BaseToken AsBaseToken(ParserRuleContext context) => new(context.GetFullText(), context.Start.StartIndex, context.Stop.StopIndex);
         private static BaseToken AsBaseToken(ParserRuleContext context, string implicitTokenText) => new(implicitTokenText, context?.Start?.StartIndex ?? -1, context?.Stop?.StopIndex ?? -1);
-
 
 
 
@@ -53,7 +54,7 @@ namespace TSQLParserLib.listeners
 
 
         public override void EnterInsert_statement([Antlr4.Runtime.Misc.NotNull] Insert_statementContext context) {
-            CurrentStatement = new SqlStatement(AsBaseToken(context));
+            CurrentStatement = new SqlStatement(AsBaseToken(context),FileName);
             Ddl_objectContext ddlObj = context.ddl_object();
             Full_table_nameContext tableName = ddlObj.full_table_name();
             ExtractAndAddTableItem(AsBaseToken(context), tableName, null);
@@ -72,7 +73,7 @@ namespace TSQLParserLib.listeners
 
         public override void EnterSql_clauses([NN] Sql_clausesContext context)
         {
-            CurrentStatement = new SqlStatement(AsBaseToken(context));
+            CurrentStatement = new SqlStatement(AsBaseToken(context), FileName);
 
         }
         public override void ExitSql_clauses([NN] Sql_clausesContext context)
@@ -143,7 +144,7 @@ namespace TSQLParserLib.listeners
                 var rightText = right is null ? (op == "IS" ? "NULL" : "") : right.GetText();
                 var leftOp = new SqlOperand(AsBaseToken(left), left is Function_call_expressionContext, FunctionOverConstant(left),_inWhere,_caseExpressionDepth > 0, _subqueryDepth);
                 var rightOp = new SqlOperand(AsBaseToken(right,rightText), right is Function_call_expressionContext, FunctionOverConstant(right), _inWhere, _caseExpressionDepth > 0, _subqueryDepth);
-                CurrentStatement.AppendPredicate(new SqlPredicate(AsBaseToken(c), leftOp, rightOp, op, _inWhere));
+                CurrentStatement.AppendPredicate(new SqlPredicate(AsBaseToken(c), leftOp, rightOp, op, _inWhere, FileName));
             }
             else if(child is Binary_in_expressionContext ec)
             {
@@ -178,7 +179,7 @@ namespace TSQLParserLib.listeners
                     _subqueryDepth 
                 );
 
-                CurrentStatement.AppendPredicate(new SqlPredicate(AsBaseToken(ec), leftOp, rightOp, op, _inWhere));
+                CurrentStatement.AppendPredicate(new SqlPredicate(AsBaseToken(ec), leftOp, rightOp, op, _inWhere, FileName));
 
 
             }
@@ -187,7 +188,7 @@ namespace TSQLParserLib.listeners
                     var leftOp = new SqlOperand(AsBaseToken(pc.children[0] as ParserRuleContext), pc.children[0] is Function_call_expressionContext, FunctionOverConstant(pc.children[0] as ExpressionContext), _inWhere, pc.children[0] is Case_expression_stubContext, _subqueryDepth);
                     var op = pc.children[1].GetText();
                     var rightOp = new SqlOperand(AsBaseToken(pc.children[2] as ParserRuleContext), pc.children[2] is Function_call_expressionContext, FunctionOverConstant(pc.children[2] as ExpressionContext), _inWhere, pc.children[2] is Case_expression_stubContext, _subqueryDepth);
-                    CurrentStatement.AppendPredicate(new SqlPredicate(AsBaseToken(pc), leftOp, rightOp, op, _inWhere));
+                    CurrentStatement.AppendPredicate(new SqlPredicate(AsBaseToken(pc), leftOp, rightOp, op, _inWhere,FileName));
 
                 }
                 else if(pc.ChildCount == 5) {
@@ -218,7 +219,7 @@ namespace TSQLParserLib.listeners
                                          _subqueryDepth
                                      )
                                 ;
-                            CurrentStatement.AppendPredicate(new SqlPredicate(AsBaseToken(pc), leftOp, rightOp, op, _inWhere));
+                            CurrentStatement.AppendPredicate(new SqlPredicate(AsBaseToken(pc), leftOp, rightOp, op, _inWhere, FileName));
 
                         }
                     }

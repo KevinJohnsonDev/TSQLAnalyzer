@@ -229,7 +229,9 @@ namespace TSQLParserLib.analysis {
 
         public ISargable Right { get; set; }
 
-        public SqlPredicate(BaseToken token, ISargable left, ISargable right, String op, bool inWhere  ) {
+        public string FileName { get; init; } = "";
+
+        public SqlPredicate(BaseToken token, ISargable left, ISargable right, String op, bool inWhere,string fileName  ) {
             TokenText = token.TokenText;
             Start = token.Start;
             End = token.End;
@@ -238,6 +240,7 @@ namespace TSQLParserLib.analysis {
             Left = left;
             Op = op;
             InWhere = inWhere;
+            FileName = fileName; 
         }
         public bool IsSargable()
         {
@@ -246,7 +249,8 @@ namespace TSQLParserLib.analysis {
 
         public override string ToString()
         {
-            return $"{TokenText}:{Start}-{End}\n\tLeft:{Left}\n\tOp:{Op}\n\tRight:{Right}";
+            var prefix = String.IsNullOrWhiteSpace(FileName) ? "" : $"FileName:{FileName}\n";
+            return $"{prefix}{FileName}{TokenText}:{Start}-{End}\n\tLeft:{Left}\n\tOp:{Op}\n\tRight:{Right}";
         }
     }
 
@@ -415,6 +419,8 @@ public class DeclaredSqlColumn : ITokenText {
     }
     public class SqlStatement: ISargable, ITokenText, INonSargableTokens
     {
+
+        public string FileName { get; init; } = "";
         public String DbContext { get; init; } = "";
         public String TokenText { get; init; }
         public int Start { get; init; }
@@ -454,21 +460,24 @@ public class DeclaredSqlColumn : ITokenText {
 
         }
 
-        public SqlStatement(BaseToken token )
+        public SqlStatement(BaseToken token,string fileName )
         {
             TokenText = token.TokenText;
             Start = token.Start;
             End = token.End;
             UsesDistinct = false;
             PendingSubqueries = new();
+            FileName = fileName;
+
         }
-        public SqlStatement(BaseToken token,String db, bool usesDistinct)
+        public SqlStatement(BaseToken token,String db, bool usesDistinct,string fileName)
         {
             TokenText = token.TokenText;
             Start = token.Start;
             End = token.End;
             DbContext = db;
             UsesDistinct = usesDistinct;
+            FileName = fileName;
         }
 
         public bool IsSargable()
@@ -517,7 +526,7 @@ public class DeclaredSqlColumn : ITokenText {
         }
         public void EnterSubquery(BaseToken token)
         {
-            var cur = new Subquery(token);
+            var cur = new Subquery(token,FileName);
             var target = CurrentSubquery ?? this;
             target.Subqueries.Add(cur);
             PendingSubqueries.Push(cur);     
@@ -545,7 +554,8 @@ public class DeclaredSqlColumn : ITokenText {
             foreach(var column in Columns) { columns += $"\n\t\t{column.ToString().Replace("\t", "\t\t\t")}"; }
             foreach(var pred in Predicates) { preds += $"\n\t\t{pred.ToString().Replace("\t","\t\t\t")}"; }
             foreach(var sub in Subqueries) { subs += $"\n\t\t{sub}"; }
-            return $"{TokenText}:{Start}-{End}\n\tContext:{DbContext}\n\t{preds}\n\t{tables}\n\t{columns}\n\t{subs}";
+            var fileHeader = String.IsNullOrWhiteSpace(FileName) ? "" : $"___FileName:{FileName}___\n";
+            return $"{fileHeader}{TokenText}:{Start}-{End}\n\tContext:{DbContext}\n\t{preds}\n\t{tables}\n\t{columns}\n\t{subs}";
         }
     }
 
@@ -554,8 +564,9 @@ public class DeclaredSqlColumn : ITokenText {
         public String Alias { get; set; } = "";
         public bool UsedAs { get; set; }
 
-        public Subquery(BaseToken token):base( token) { }
+        public Subquery(BaseToken token,string fileName):base( token, fileName) { }
 
-        public Subquery(BaseToken token, String db, bool usesDistinct):base(token,db,usesDistinct){}
+        public Subquery(BaseToken token, String db, bool usesDistinct, string fileName)
+            :base(token,db,usesDistinct, fileName) {}
     }
 }
