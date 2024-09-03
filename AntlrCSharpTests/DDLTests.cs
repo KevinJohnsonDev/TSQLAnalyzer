@@ -7,9 +7,9 @@ namespace TSQLParserLibTests {
         [TestMethod]
         public void TableColumnDeclarationsTrackedInCatalog() {
             var query = @"CREATE TABLE dbo.B(
-                ID INT NOT NULL CONSTRAINT PK_dbo_B_ID PRIMARY KEY,
+                ID INT CONSTRAINT PK_dbo_B_ID PRIMARY KEY,
                 ActionBy VARCHAR(25) NOT NULL,
-                ActionDate DATETIME NOT NULL
+                ActionDate DATETIME NULL
             )";
             var result = TestMethods.Init(query);
             var catalog = result.DbCatalog;
@@ -18,8 +18,15 @@ namespace TSQLParserLibTests {
             Assert.IsTrue(table.Schema == "dbo");
             Assert.IsTrue(table.TableName == "B");
             Assert.IsTrue(table.Columns.Count == 3);
+            /*Primary Key Columns are implicitly not nullable*/
+            Assert.IsTrue(table.Columns[0].IsNullable == false);
+            Assert.IsTrue(table.Columns[1].IsNullable == false);
+            Assert.IsTrue(table.Columns[2].IsNullable == true);
+
 
         }
+
+
 
         [TestMethod]
         public void TablesPersistAcrossBatches() {

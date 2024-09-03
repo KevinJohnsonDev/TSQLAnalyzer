@@ -77,6 +77,13 @@ namespace TSQLParserLib.analysis {
 
     public class BaseToken : ITokenText {
         public String TokenText { get; init; }
+
+        public static BaseToken OnlineToken { get; }
+
+        static BaseToken(){
+            OnlineToken  = new BaseToken("[ONLINE]", -1, -1);
+        }
+
         public int Start { get; init; }
         public int End { get; init; }
 
@@ -125,6 +132,10 @@ namespace TSQLParserLib.analysis {
 
         public static bool operator !=(SqlDataType? left, SqlDataType? right) {
             return !(left == right);
+        }
+
+        public static SqlDataType FromDatabase(string dataType, int? precision = null, int? scale = null) {
+            return new SqlDataType(BaseToken.OnlineToken, dataType, precision, scale);
         }
     }
     public class SqlVariable : ITokenText {
@@ -262,6 +273,7 @@ namespace TSQLParserLib.analysis {
     public string Database { get; init; }
     public string Schema { get; init; }
 
+
     public IList<DeclaredSqlColumn> Columns { get; init; }
     public DeclaredSqlTable(BaseToken token,string database,string schema, string tableName, IList<DeclaredSqlColumn> columns) {
         TokenText = token.TokenText;
@@ -272,6 +284,15 @@ namespace TSQLParserLib.analysis {
         TableName = tableName;
         Columns = columns;
     }
+        public DeclaredSqlTable(BaseToken token, string database, string schema, string tableName) {
+            TokenText = token.TokenText;
+            Start = token.Start;
+            End = token.End;
+            Database = database;
+            Schema = schema;
+            TableName = tableName;
+            Columns = new List<DeclaredSqlColumn>();
+        }
 
         public void Add(DeclaredSqlColumn col) => Columns.Add(col);
         public void Alter(DeclaredSqlColumn col) {
@@ -289,24 +310,43 @@ namespace TSQLParserLib.analysis {
             if (i > 0) { Columns.Remove(Columns[i]); }
         }
 
+        public static DeclaredSqlTable FromDatabase(string database, string schema, string tableName) {
+            return new DeclaredSqlTable(BaseToken.OnlineToken, database,schema,tableName);
+        }
 
-}
+        public bool IsFromOnline() {
+            return  TokenText == BaseToken.OnlineToken.TokenText &&
+                    Start == BaseToken.OnlineToken.Start &&
+                    End == BaseToken.OnlineToken.End;
+        }
+        public override string ToString() => $"{TokenText}:{Start}-{End}\n\tDatabase:{Database}\n\tSchema:{Schema}\n\tTableName:{TableName}\n\t";
 
-public class DeclaredSqlColumn : ITokenText {
+
+
+    }
+
+    public class DeclaredSqlColumn : ITokenText {
         public string TokenText { get; init; }
         public int Start { get; init; }
         public int End { get; init; }
         public string ColumnName { get; init; }
 
+        public bool IsNullable { get; init; }
+
         public SqlDataType SqlType { get; init; }
-        public DeclaredSqlColumn(BaseToken token,string columnName,SqlDataType sqlType) {
+        public DeclaredSqlColumn(BaseToken token,string columnName,SqlDataType sqlType,bool isNullable) {
             TokenText = token.TokenText;
             Start = token.Start;
             End = token.End;
             ColumnName = columnName;
             SqlType = sqlType;
+            IsNullable = isNullable;
         }
- }
+
+        public static DeclaredSqlColumn FromDatabase(string columnName, SqlDataType sqlType,bool isNullable) {
+            return new DeclaredSqlColumn(BaseToken.OnlineToken, columnName, sqlType,isNullable);
+        }
+    }
     public class SqlTable : ITokenText, IAliasable, IEquatable<SqlTable?> {
         public string Alias { get; set; } = "";
         public string TokenText { get; init; }

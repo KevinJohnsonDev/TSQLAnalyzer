@@ -6,6 +6,8 @@ using System.ComponentModel.DataAnnotations;
 using System.Xml.Linq;
 using static TSqlParser;
 using NN = System.Diagnostics.CodeAnalysis.NotNullAttribute;
+using System.Data;
+
 namespace TSQLParserLib.listeners
 {
     public class SqlListener : TSqlParserBaseListener
@@ -413,13 +415,47 @@ namespace TSQLParserLib.listeners
 
 #pragma warning disable CS8602 // Dereference of a possibly null reference, if it's null the parsers broke
             var nameID = colToken.id_();
+            var possibleNullabilityDeclarationTokens = FindInstancesOfParentType<Column_definition_elementContext>(colToken.children);
+            var nullability = ColumnIsNullable(possibleNullabilityDeclarationTokens);
             var IDID = nameID.ID();
             var name = IDID.GetText();
 #pragma warning restore CS8602 // Dereference of a possibly null reference.
             var dt = Extracted_Data_Type(colToken.data_type());
-            return new DeclaredSqlColumn(AsBaseToken(colToken), name, dt);
+            return new DeclaredSqlColumn(AsBaseToken(colToken), name, dt, nullability);
         }
+
+        private bool ColumnIsNullable(Column_definition_elementContext[] cde) {
+            foreach (var possibleToken in cde) {
+                if (IsNotNullDeclaration(possibleToken)) { return false; }
+                foreach (var child in possibleToken.children) {
+                    if (HasPrimaryKeyDeclaration(child as Column_constraintContext)) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+        private bool IsNotNullDeclaration(ParserRuleContext prc) {
+            return prc.Start.Text.ToUpper() == "NOT" && prc.Stop.Text.ToUpper() == "NULL";
+        }
+        private bool HasPrimaryKeyDeclaration(Column_constraintContext? constraint) {
+            if (constraint == null) { return false; }
+            var terminals = constraint.children.Where((token) => token is TerminalNodeImpl).ToList();
+            for (var i = 0; i < terminals.Count - 1; i++) {
+                if (terminals[i].GetText().ToUpper() == "PRIMARY") {
+                    if (terminals[i + 1].GetText().ToUpper() == "KEY") {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+
     }
+
+
+ 
 
 
 

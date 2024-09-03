@@ -4,6 +4,8 @@ using Antlr4.Runtime.Tree;
 using System.Text;
 using TSQLParserLib.analysis;
 using TSQLParserLib.listeners;
+using TSQLParserLib.online;
+
 
 
 try {
@@ -72,7 +74,13 @@ static InputArgumentOption parseArgs(string[] args) {
     }
     else {
         foreach (string arg in args) {
-            fileNames.Add(arg);
+            if (arg.StartsWith("--Con=")){
+                CatalogFetcher CF = new(arg[6..]);
+                CF.PopulateCatalog();
+            }
+            else {
+                fileNames.Add(arg);
+            }
         }
     }
 
