@@ -2,7 +2,7 @@
   "profiles": {
     "TSQLParserClient": {
       "commandName": "Project",
-      "commandLineArgs": "\"--Con=${YourConnectionString}; \"..\\..\\..\\Examples\\SampleStatements.sql\""
+      "commandLineArgs": "--con \"YourConnectionStringHere\" --directory \"..\\..\\..\\Examples\""
     }
   }
 }

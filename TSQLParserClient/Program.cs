@@ -59,42 +59,45 @@ static bool IsFullPath(string path) {
 
 static InputArgumentOption parseArgs(string[] args) {
     List<string> fileNames = new();
-
-    if (args.Length == 0) {
-        Console.WriteLine("Please provide a path for your *.sql fileNames seperated by spaces");
-        Console.WriteLine("q+enter to quit");
-
-        string? input = Console.ReadLine();
-        while (String.IsNullOrWhiteSpace(input)) { input = Console.ReadLine(); }
-        input = input.Trim();
-        if(input == "q") { return new InputArgumentOption(fileNames, true); }
-        if (input.Contains(' ')) { fileNames.AddRange(input.Split(" ")); }
-        else { fileNames.Add(input); }
-
-    }
-    else {
-        foreach (string arg in args) {
-            if (arg.StartsWith("--Con=")){
-                CatalogFetcher CF = new(arg[6..]);
-                CF.PopulateCatalog();
-            }
-            else {
-                fileNames.Add(arg);
-            }
+    string? directory = null;
+    string? con = null;
+    bool recurse = false;
+    for(var i =0; i < args.Length; i += 1) {
+        if (args[i] == "--directory" && i + 1 < args.Length) {
+            directory = args[i + 1];
+        }
+        if (args[i] == "--con" && i + 1 < args.Length) {
+            con = args[i + 1];
+        }
+        if (args[i] == "--recurse" ) {
+            recurse = true;
         }
     }
 
-    for (var i = fileNames.Count - 1; i >= 0; i--) {
-        string fileName = fileNames[i];
-        string absoluteName = Path.GetFullPath(fileName);
-        if (!File.Exists(fileName)) {
-            Console.WriteLine($"{fileName} is an invalid path, translated relative path:({absoluteName})");
-            fileNames.RemoveAt(i);
-        }
-        else {
-            fileNames[i] = absoluteName;
-        }
+
+    if (directory == null) {
+        Console.WriteLine("Error: --directory is required. specify below or type q to exit");
+        directory = Console.ReadLine();
+        while (String.IsNullOrWhiteSpace(directory)) { directory = Console.ReadLine(); }
+        directory = directory.Trim();
+        if (directory == "q") { return new InputArgumentOption(fileNames, true); }
     }
+
+    if(con != null) {
+        CatalogFetcher CF = new(con);
+        CF.PopulateCatalog();
+    }
+
+    string absDirectory = Path.GetFullPath(directory);
+
+    if(!Directory.Exists(absDirectory)){
+        Console.WriteLine("Error: --directory provided does not exist...exiting");
+        return new InputArgumentOption(fileNames, true);
+    }
+    
+    SearchOption so = recurse ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
+    fileNames.AddRange( Directory.GetFiles(absDirectory, "*.sql", so));
+
     return new InputArgumentOption(fileNames,false);
 }
 

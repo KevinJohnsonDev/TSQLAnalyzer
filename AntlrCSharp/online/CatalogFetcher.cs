@@ -46,6 +46,9 @@ namespace TSQLParserLib.online
             {
                 Console.WriteLine($"SQL Error: {ex.Message}");
             }
+            catch (ArgumentException ex) {
+                Console.WriteLine($"Connection String Invalid: {ex.Message}");
+            }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error: {ex.Message}");
