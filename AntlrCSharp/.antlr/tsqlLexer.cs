@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-// Generated from C:/Users/Kevin Johnson/source/repos/TSQLParser/TSqlLexer.g4 by ANTLR 4.13.1
+// Generated from C:/Users/Kevin Johnson/source/repos/TSQLParser/AntlrCSharp/TSqlLexer.g4 by ANTLR 4.13.1
 
 // Unreachable code detected
 #pragma warning disable 0162

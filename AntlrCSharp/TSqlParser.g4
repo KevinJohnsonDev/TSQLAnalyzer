@@ -3988,6 +3988,7 @@ search_condition
 
 predicate
     : EXISTS '(' subquery ')'
+    | UPDATE '(' ( full_column_name | LOCAL_ID) ')'
     | freetext_predicate
     | expression comparison_operator expression
     | expression MULT_ASSIGN expression ////SQL-82 syntax for left outer joins; '*='. See https://stackoverflow.com/questions/40665/in-sybase-sql
