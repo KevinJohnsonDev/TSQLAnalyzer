@@ -16,9 +16,13 @@ try {
     if(argumentOption.FileNames.Count == 0) {
         parseArgs(Array.Empty<string>());
     }
-
-
+    CatalogFetcher? dbCatalog = null;
+    if (argumentOption.ConnectionString != null) {
+        dbCatalog = new(argumentOption.ConnectionString);
+        dbCatalog.PopulateCatalog();
+    }
     TokenLoggingSqlListener? listener = null;
+    bool populated = false;
     foreach (string fileName in argumentOption.FileNames) {
         string fileContents = File.ReadAllText(fileName);
         AntlrInputStream inputStream = new(fileContents);
@@ -27,6 +31,10 @@ try {
         TSqlParser sqlParser = new(commonTokenStream);
         listener ??= new(sqlParser);
         listener.FileName = fileName;
+        if ( dbCatalog is not null && !populated) {
+            dbCatalog.InjectCatalog(listener);
+            populated = true;
+        }
         ParseTreeWalker.Default.Walk(listener, sqlParser.tsql_file());
 
     }
@@ -49,14 +57,14 @@ try {
 catch (Exception ex) {
     Console.WriteLine("Error: " + ex);
 }
-
+/*
 static bool IsFullPath(string path) {
     return !String.IsNullOrWhiteSpace(path)
         && path.IndexOfAny(System.IO.Path.GetInvalidPathChars().ToArray()) == -1
         && Path.IsPathRooted(path)
         && !Path.GetPathRoot(path).Equals(Path.DirectorySeparatorChar.ToString(), StringComparison.Ordinal);
 }
-
+*/
 static InputArgumentOption parseArgs(string[] args) {
     List<string> fileNames = new();
     string? directory = null;
@@ -80,25 +88,21 @@ static InputArgumentOption parseArgs(string[] args) {
         directory = Console.ReadLine();
         while (String.IsNullOrWhiteSpace(directory)) { directory = Console.ReadLine(); }
         directory = directory.Trim();
-        if (directory == "q") { return new InputArgumentOption(fileNames, true); }
+        if (directory == "q") { return new InputArgumentOption(fileNames, true,con); }
     }
 
-    if(con != null) {
-        CatalogFetcher CF = new(con);
-        CF.PopulateCatalog();
-    }
 
     string absDirectory = Path.GetFullPath(directory);
 
     if(!Directory.Exists(absDirectory)){
         Console.WriteLine("Error: --directory provided does not exist...exiting");
-        return new InputArgumentOption(fileNames, true);
+        return new InputArgumentOption(fileNames, true,con);
     }
     
     SearchOption so = recurse ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
     fileNames.AddRange( Directory.GetFiles(absDirectory, "*.sql", so));
 
-    return new InputArgumentOption(fileNames,false);
+    return new InputArgumentOption(fileNames,false, con);
 }
 
 class InputArgumentOption {
@@ -106,9 +110,11 @@ class InputArgumentOption {
     public  List<string> FileNames { get; init; }
     public  bool Quit { get; init; }
 
-    public InputArgumentOption(List<string> fileNames, bool quit) {
+    public string? ConnectionString { get; init; }
+    public InputArgumentOption(List<string> fileNames, bool quit, string? connectionString) {
         FileNames = fileNames;
         Quit = quit;
+        ConnectionString = connectionString;
     }
 
 }

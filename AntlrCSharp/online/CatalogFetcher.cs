@@ -2,6 +2,7 @@
 using TSQLParserLib.analysis;
 using System.Collections.Generic;
 using System.Linq;
+using TSQLParserLib.listeners;
 
 namespace TSQLParserLib.online
 {
@@ -10,13 +11,21 @@ namespace TSQLParserLib.online
         private readonly string _connectionString;
         private readonly Dictionary<string, List<DeclaredSqlTable>> _databaseSchemaTables = new();
 
+
         public List<string> DatabaseNames { get; } = new List<string>();
 
         public CatalogFetcher(string connectionString)
         {
             _connectionString = connectionString;
         }
-
+        public void InjectCatalog<T>(T sl) where T : SqlListener {
+            var catalog = sl.DbCatalog;
+            foreach(KeyValuePair<string, List<DeclaredSqlTable>> kvp in _databaseSchemaTables){
+                foreach(var table in kvp.Value) {
+                    catalog.Add(table);
+                }
+            }
+        }
         public void PopulateCatalog()
         {
             try

@@ -358,10 +358,22 @@ namespace TSQLParserLib.analysis {
         public string Schema { get; init; }
         public string TableName { get; init; }
 
-        public List<SqlColumn> Columns { get; init; }
+
+        public DeclaredSqlTable? ResolvedTable { get; init; }
+
+        public SqlTable(BaseToken token, DeclaredSqlTable dst) {
+            Database = dst.Database;
+            Schema = dst.Schema;
+            TableName = dst.TableName;
+            Start = token.Start;
+            End = token.End;
+            TokenText = token.TokenText;
+            var prefix = String.IsNullOrWhiteSpace(Database) ? "" : $"{Database}.";
+            FQN = $"{prefix}{Schema}.{TableName}";
+            ResolvedTable = dst;
+        }
 
         public SqlTable(BaseToken token, string database,string schema, string tableName) {
-            Columns = new();
             Database = database;
             Schema = schema;
             TableName = tableName;
@@ -375,7 +387,6 @@ namespace TSQLParserLib.analysis {
 
         public SqlTable(BaseToken token, string schema, string tableName)
         {
-            Columns = new();
             Database = "";
             Schema = schema;
             TableName = tableName;
@@ -559,6 +570,10 @@ namespace TSQLParserLib.analysis {
         public void AddTable(BaseToken token, string db, string schema, string tableName) => AddTable(new SqlTable(token, db, schema, tableName));
         public void AddTable(BaseToken token, string schema, string tableName) => AddTable(new SqlTable(token, schema, tableName));
         public void AddTable(BaseToken token, string tableName) => AddTable(new SqlTable(token, "dbo", tableName));
+
+        public void AddTable(BaseToken token, DeclaredSqlTable dst) => AddTable(new SqlTable(token, dst));
+
+
         public void AddTable(SqlTable tbl) {
             CurrentAliasable = tbl;
             Tables.Add(tbl);

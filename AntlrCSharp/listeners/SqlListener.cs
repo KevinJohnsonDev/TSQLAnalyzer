@@ -7,8 +7,6 @@ using System.Xml.Linq;
 using static TSqlParser;
 using NN = System.Diagnostics.CodeAnalysis.NotNullAttribute;
 using System.Data;
-using static System.Formats.Asn1.AsnWriter;
-using System.Security.AccessControl;
 
 namespace TSQLParserLib.listeners
 {
@@ -314,7 +312,13 @@ namespace TSQLParserLib.listeners
             var tableName = parts[plen - 1];
             if (parts.Length > 1) { schema = parts[plen - 2]; }
             if (parts.Length > 2) { database = parts[plen - 3]; }
-            CurrentStatement.AddTable(context, database, schema, tableName);
+            DeclaredSqlTable? dt = DbCatalog.Seek(database, schema, tableName);
+            if(dt is not null) {
+                CurrentStatement.AddTable(context, dt);
+            }
+            else {
+                CurrentStatement.AddTable(context, database, schema, tableName);
+            }
             if (ata is not null) {
                 var alias = ata.GetText();
                 var usedAS = alias.Substring(0, 2) == "AS";
@@ -371,7 +375,7 @@ namespace TSQLParserLib.listeners
             var isDrop = ctx.DROP() != null;
             var isColumn = ctx.COLUMN != null;
             if (isAlter && isAdd) {
-                var column = ExtractedColumnDefinition(ctx.column_def_table_constraints().column_def_table_constraint(0).column_definition());
+                var column = ExtractedColumnDefinition(ctx.column_def_table_constraints().column_def_table_constraint(0));
                 target.Add(column);
             }
             else if (isAlter && isDrop && isColumn) {
@@ -380,7 +384,7 @@ namespace TSQLParserLib.listeners
                 Console.Write(column.ToString());
             }
             else if(isAlter) {
-                var column = ExtractedColumnDefinition(ctx.column_def_table_constraints().column_def_table_constraint(0).column_definition());
+                var column = ExtractedColumnDefinition(ctx.column_def_table_constraints().column_def_table_constraint(0));
                 target.Alter(column);     
             }
         }
@@ -406,19 +410,14 @@ namespace TSQLParserLib.listeners
                 }
                 foreach(var token in columnConstraint.children) {
                     if (token is Column_def_table_constraintContext column) {
-                        if (column.children[0] is Column_definitionContext coldef) {
-                            columns.Add(ExtractedColumnDefinition(coldef));
-                        }
-                        else if (column.children[0] is Table_constraintContext) { 
-                            //Handle Constraints
-                        }
-                        
+                        columns.Add(ExtractedColumnDefinition(column));
                     }
                 }         
             }
             DbCatalog.Add(new DeclaredSqlTable(AsBaseToken(ctx), db, schema, tableName, columns));
         }
-        private DeclaredSqlColumn ExtractedColumnDefinition(Column_definitionContext colToken) {
+        private DeclaredSqlColumn ExtractedColumnDefinition(Column_def_table_constraintContext column) {
+            var colToken = column.children[0] as Column_definitionContext;
 
 #pragma warning disable CS8602 // Dereference of a possibly null reference, if it's null the parsers broke
             var nameID = colToken.id_();
@@ -427,11 +426,6 @@ namespace TSQLParserLib.listeners
             var IDID = nameID.ID();
             var name = IDID.GetText();
 #pragma warning restore CS8602 // Dereference of a possibly null reference.
-
-            if (colToken.AS() != null) {
-                var computedType = new SqlDataType(AsBaseToken(colToken.expression()), "USER_DEFINED", -1, -1);
-                return new DeclaredSqlColumn(AsBaseToken(colToken), name, computedType, nullability);
-            }
             var dt = Extracted_Data_Type(colToken.data_type());
             return new DeclaredSqlColumn(AsBaseToken(colToken), name, dt, nullability);
         }
