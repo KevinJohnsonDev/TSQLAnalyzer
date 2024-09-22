@@ -38,5 +38,31 @@ namespace TSQLParserLibTests {
             SqlListener listener = TestMethods.Init(input);
             Assert.IsTrue(listener.Statements[2].Tables[0].ResolvedTable == listener.DbCatalog.Tables[0]);
         }
+
+        [TestMethod]
+        public void SchemaTableResolvesFromTSQLDeclarationsWhenUseStatementPresent() {
+            var input = @"
+            USE TestDB
+            GO
+            CREATE TABLE dbo.example( ID INT PRIMARY KEY)
+            GO
+            SELECT a.b AS D FROM dbo.example
+            ";
+            SqlListener listener = TestMethods.Init(input);
+            Assert.IsTrue(listener.Statements[2].Tables[0].ResolvedTable == listener.DbCatalog.Tables[0]);
+        }
+
+        [TestMethod]
+        public void SchemaTableResolvesFromTSQLDeclarationsWhenUseStatementNotPresent() {
+            var input = @"
+            GO
+            CREATE TABLE dbo.example( ID INT PRIMARY KEY)
+            GO
+            SELECT a.b AS D FROM dbo.example
+            ";
+            SqlListener listener = TestMethods.Init(input);
+            Assert.IsTrue(listener.Statements[1].Tables[0].ResolvedTable == listener.DbCatalog.Tables[0]);
+        }
+
     }
 }

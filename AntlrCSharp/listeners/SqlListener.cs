@@ -312,6 +312,7 @@ namespace TSQLParserLib.listeners
             var tableName = parts[plen - 1];
             if (parts.Length > 1) { schema = parts[plen - 2]; }
             if (parts.Length > 2) { database = parts[plen - 3]; }
+            else { database = DB; }
             DeclaredSqlTable? dt = DbCatalog.Seek(database, schema, tableName);
             if(dt is not null) {
                 CurrentStatement.AddTable(context, dt);
