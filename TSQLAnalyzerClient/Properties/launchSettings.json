@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "TSQLAnalyzerClient": {
+      "commandName": "Project",
+      "commandLineArgs": "--con \"YourConnectionStringHere\" --directory \"..\\..\\..\\Examples\""
+    }
+  }
+}

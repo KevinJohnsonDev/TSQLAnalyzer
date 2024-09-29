@@ -1,13 +1,15 @@
-# TSQLParser
+# TSQLAnalyzer
 
-TSQLParser is an open source, TSQL parser built with ANTLR4.
+TSQLAnalyzer is open source.
 
-The parser was originally compiled using the ANTLR4 grammar syntax support vscode plugin that was developed by Mike Lischke.
+The TSQL parser built with ANTLR4.
+
+The parser portion was originally compiled using the ANTLR4 grammar syntax support vscode plugin that was developed by Mike Lischke.
 
 However it just uses ANTLR4 currently
 
 The TSQL grammar was derived from the official [ANTLR4 TSQL Grammar](
-https://github.com/antlr/grammars-v4/blob/master/sql/tsql/TSqlParser.g4)
+https://github.com/antlr/grammars-v4/blob/master/sql/tsql/TSQLAnalyzer.g4)
 
 This project will be renamed eventually
 
@@ -51,6 +53,6 @@ If it picks up steam, I'll start putting more time into it.
 #Rebuilding parser
 
 java -jar antlr-4.13.1-complete.jar -Dlanguage=CSharp -listener -visitor -o generated  
-"{PathToTSqLLexer}\TSqlLexer.g4"  "{PathToTSqlParser}\TSqlParser.g4"
+"{PathToTSqLLexer}\TSqlLexer.g4"  "{PathToTSQLAnalyzer}\TSQLAnalyzer.g4"
 
 

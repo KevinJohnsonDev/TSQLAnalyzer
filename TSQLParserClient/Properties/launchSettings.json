@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "TSQLParserClient": {
-      "commandName": "Project",
-      "commandLineArgs": "--con \"YourConnectionStringHere\" --directory \"..\\..\\..\\Examples\""
-    }
-  }
-}
