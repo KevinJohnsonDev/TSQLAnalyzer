@@ -22,6 +22,41 @@ namespace TSQLParserLibTests {
         }
 
         [TestMethod]
+
+        public void TableUsageReporterIdentifiesUnResolvedTables() {
+            string statements = @"
+                CREATE TABLE dbo.A(ID INT PRIMARY KEY);
+                SELECT A.ID FROM dbo.A JOIN dbo.B ON A.ID = B.ID";
+
+            SqlListener listener = TestMethods.Init(statements);
+            TableUsageReporter tur = new(listener.Statements);
+            Assert.IsFalse(tur.Unresolved.ContainsKey("dbo.A"));
+            Assert.IsTrue(tur.Unresolved.ContainsKey("dbo.B"));
+            Assert.IsTrue(tur.Unresolved["dbo.B"].Count == 1);
+            Assert.IsTrue(tur.Unresolved["dbo.B"][0].TokenText == "SELECT A.ID FROM dbo.A JOIN dbo.B ON A.ID = B.ID");
+
+        }
+
+        [TestMethod]
+
+        public void TableUsageReporterIdentifiersEveryStatementUnResolvedTableIsIn() {
+            string statements = @"
+                CREATE TABLE dbo.A(ID INT PRIMARY KEY);
+                SELECT A.ID FROM dbo.A JOIN dbo.B ON A.ID = B.ID
+                SELECT B.ID FROM dbo.B
+                SELECT A.ID FROM dbo.A";
+
+            SqlListener listener = TestMethods.Init(statements);
+            TableUsageReporter tur = new(listener.Statements);
+            Assert.IsFalse(tur.Unresolved.ContainsKey("dbo.A"));
+            Assert.IsTrue(tur.Unresolved.ContainsKey("dbo.B"));
+            Assert.IsTrue(tur.Unresolved["dbo.B"].Count == 2);
+            Assert.IsTrue(tur.Unresolved["dbo.B"][0].TokenText == "SELECT A.ID FROM dbo.A JOIN dbo.B ON A.ID = B.ID");
+            Assert.IsTrue(tur.Unresolved["dbo.B"][1].TokenText == "SELECT B.ID FROM dbo.B");
+
+        }
+
+        [TestMethod]
         public void TableUsageReporterTiesFullyQualifiedNamesToStatementsUsed() {
             SqlListener listener = TestMethods.Init(_sampleStatements);
             TableUsageReporter tur = new(listener.Statements);
