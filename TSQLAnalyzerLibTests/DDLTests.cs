@@ -92,6 +92,64 @@ namespace TSQLAnalyzerLibTests {
 
 
         }
+        [TestMethod]
 
+        public void ComputedColumnDataTypesAreMappedIfTheyUseACast() {
+            var query = @"
+            CREATE TABLE dbo.A(
+                ID INT NOT NULL,
+                Computed AS CAST(ID AS VARCHAR(50))
+            );";
+            var result = TestMethods.Init(query);
+            var catalog = result.DbCatalog;
+            var table = catalog.Tables[0];
+            var dt = table.Columns[1].SqlType;
+            Assert.IsTrue(dt.BaseType == DataType.VARCHAR);
+            Assert.IsTrue(dt.Precision == 50);
+        }
+
+        [TestMethod]
+        public void ComputedColumnCanResolveNestedCasts() {
+            var query = @"
+            CREATE TABLE dbo.A(
+                ID INT NOT NULL,
+                Computed AS CAST(CAST(CAST(ID AS VARCHAR(50)) AS INT) AS CHAR(22))
+            );";
+            var result = TestMethods.Init(query);
+            var catalog = result.DbCatalog;
+            var table = catalog.Tables[0];
+            var dt = table.Columns[1].SqlType;
+            Assert.IsTrue(dt.BaseType == DataType.CHAR);
+            Assert.IsTrue(dt.Precision == 22);
+        }
+        [TestMethod]
+        public void ComputedColumnCanResolveNestedCastsWithIsNullOutside() {
+            var query = @"
+            CREATE TABLE dbo.A(
+                ID INT NOT NULL,
+                Computed AS ISNULL(CAST(CAST(CAST(ID AS VARCHAR(50)) AS INT) AS CHAR(22)),'Hello')
+            );";
+            var result = TestMethods.Init(query);
+            var catalog = result.DbCatalog;
+            var table = catalog.Tables[0];
+            var dt = table.Columns[1].SqlType;
+            Assert.IsTrue(dt.BaseType == DataType.CHAR);
+            Assert.IsTrue(dt.Precision == 22);
+        }
+
+        [TestMethod]
+        public void ComputedColumnCanResolveNestedCastsWithIsNullInside() {
+            var query = @"
+            CREATE TABLE dbo.A(
+                ID INT NOT NULL,
+                Computed AS CAST(ISNULL(CAST(CAST(ID AS VARCHAR(50)) AS INT),'-1') AS CHAR(22))
+            );";
+            var result = TestMethods.Init(query);
+            var catalog = result.DbCatalog;
+            var table = catalog.Tables[0];
+            var dt = table.Columns[1].SqlType;
+            Assert.IsTrue(dt.BaseType == DataType.CHAR);
+            Assert.IsTrue(dt.Precision == 22);
+        }
     }
 }

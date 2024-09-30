@@ -435,7 +435,9 @@ namespace TSQLAnalyzerLib.listeners
 #pragma warning restore CS8602 // Dereference of a possibly null reference.
             SqlDataType dt;
             if (colToken.AS() != null) {
-                dt = new SqlDataType(AsBaseToken(colToken.expression()), "UserDefined", null, null) ;
+                var exp = colToken.expression();
+                var attempt = ComputedColumnExpressionType(exp);
+                dt = attempt ?? new SqlDataType(AsBaseToken(exp), "UserDefined") ;
             }
             else {
                 dt = Extracted_Data_Type(colToken.data_type());
@@ -468,6 +470,22 @@ namespace TSQLAnalyzerLib.listeners
                 }
             }
             return false;
+        }
+
+        public SqlDataType? ComputedColumnExpressionType(ExpressionContext ec) {
+            if (ec == null) { return null; }
+            if(ec.children.Count == 1 && ec.children[0] is BUILT_IN_FUNCContext fun) {
+                if (fun.children[0] is CASTContext cc) {
+                    /*OuterMost Cast Determinees Type CAST(CAST(x AS CHAR) AS INT) and so it will be last type extracted */
+                    Data_typeContext[] dtc = FindInstancesOfParentType<Data_typeContext>(cc.children);
+                    return Extracted_Data_Type(dtc[^1]);
+                }
+                if (fun.children[0] is ISNULLContext inc) {
+                    Data_typeContext[] dtc = FindInstancesOfParentType<Data_typeContext>(inc.children);
+                    return Extracted_Data_Type(dtc[^1]);
+                }
+            }
+            return null;
         }
 
 
