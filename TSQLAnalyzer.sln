@@ -9,6 +9,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TSQLAnalyzerLibTests", "TSQ
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TSQLAnalyzerClient", "TSQLAnalyzerClient\TSQLAnalyzerClient.csproj", "{E45BFC64-6200-468C-A53B-8048EBF57346}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TSQLParserLib", "TSQLParserLib\TSQLParserLib.csproj", "{86C57BB0-983B-4AC1-A237-A9FE52B79592}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{E45BFC64-6200-468C-A53B-8048EBF57346}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E45BFC64-6200-468C-A53B-8048EBF57346}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E45BFC64-6200-468C-A53B-8048EBF57346}.Release|Any CPU.Build.0 = Release|Any CPU
+		{86C57BB0-983B-4AC1-A237-A9FE52B79592}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{86C57BB0-983B-4AC1-A237-A9FE52B79592}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{86C57BB0-983B-4AC1-A237-A9FE52B79592}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{86C57BB0-983B-4AC1-A237-A9FE52B79592}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
