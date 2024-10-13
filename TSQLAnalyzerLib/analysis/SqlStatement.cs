@@ -265,25 +265,51 @@ namespace TSQLAnalyzerLib.analysis {
         }
     }
 
-    public class DeclaredSqlTable : ITokenText {
-    public string TokenText { get; init; }
-    public int Start { get; init; }
-    public int End { get; init; }
-    public string TableName { get; init; }
-    public string Database { get; init; }
-    public string Schema { get; init; }
+    public record SqlIndex {
+        public IList<DeclaredSqlColumn> Columns { get; init; }
+        public IList<DeclaredSqlColumn> IncludedColumns { get; init; }
 
+        public string Name { get; init; }
+        public string? WhereClause { get; init; }
 
-    public IList<DeclaredSqlColumn> Columns { get; init; }
-    public DeclaredSqlTable(BaseToken token,string database,string schema, string tableName, IList<DeclaredSqlColumn> columns) {
-        TokenText = token.TokenText;
-        Start = token.Start;
-        End = token.End;
-        Database = database;
-        Schema = schema;
-        TableName = tableName;
-        Columns = columns;
+        public bool IsUnique { get; init; }
+        public bool IsClustered { get; init; }
+        public bool IsPrimaryKey { get; init; }
+
+        public SqlIndex(string name,IList<DeclaredSqlColumn> columns, string? whereClause, IList<DeclaredSqlColumn> includedColumns,   bool isUnique, bool isClustered, bool isPrimaryKey) {
+            Name = name;
+            Columns = columns;
+            WhereClause = whereClause;
+            IncludedColumns = includedColumns;
+            IsUnique = isUnique;
+            IsClustered = isClustered;
+            IsPrimaryKey = isPrimaryKey;
+        }
+
     }
+
+    public class DeclaredSqlTable : ITokenText {
+        public string TokenText { get; init; }
+        public int Start { get; init; }
+        public int End { get; init; }
+        public string TableName { get; init; }
+        public string Database { get; init; }
+        public string Schema { get; init; }
+
+        public IList<SqlIndex> Indexes { get; init; }
+
+        public IList<DeclaredSqlColumn> Columns { get; init; }
+
+        public DeclaredSqlTable(BaseToken token,string database,string schema, string tableName, IList<DeclaredSqlColumn> columns) {
+            TokenText = token.TokenText;
+            Start = token.Start;
+            End = token.End;
+            Database = database;
+            Schema = schema;
+            TableName = tableName;
+            Columns = columns;
+            Indexes = new List<SqlIndex>();
+        }
         public DeclaredSqlTable(BaseToken token, string database, string schema, string tableName) {
             TokenText = token.TokenText;
             Start = token.Start;
@@ -292,8 +318,11 @@ namespace TSQLAnalyzerLib.analysis {
             Schema = schema;
             TableName = tableName;
             Columns = new List<DeclaredSqlColumn>();
-        }
+            Indexes = new List<SqlIndex>();
 
+        }
+        
+        public void Add(SqlIndex index) => Indexes.Add(index);
         public void Add(DeclaredSqlColumn col) => Columns.Add(col);
         public void Alter(DeclaredSqlColumn col) {
 
