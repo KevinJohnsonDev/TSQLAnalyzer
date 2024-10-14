@@ -244,7 +244,9 @@ namespace TSQLAnalyzerLib.online
                 bool IsUniqueConstraint = sdr.GetBoolean(sdr.GetOrdinal("IsUniqueConstraint"));
                 bool isPrimaryKey = sdr.GetBoolean(sdr.GetOrdinal("IsPrimaryKey"));
                 bool isIncludedColumn = sdr.GetBoolean(sdr.GetOrdinal("IsIncludedColumn"));
-                string predicate = sdr.GetString(sdr.GetOrdinal("WhereClause"));
+                bool predicateMissing = sdr.IsDBNull(sdr.GetOrdinal("WhereClause"));
+                
+                string predicate = predicateMissing ? "" :  sdr.GetString(sdr.GetOrdinal("WhereClause"));
                 int indexOrdinal = sdr.GetInt32(sdr.GetOrdinal("IndexOrdinal"));
                 int columnOrdinal = sdr.GetInt32(sdr.GetOrdinal("ColumnOrdinal"));
 
