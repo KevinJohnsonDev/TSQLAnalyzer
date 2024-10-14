@@ -207,7 +207,7 @@ namespace TSQLAnalyzerLib.online
             sdr.Close();
         }
 
-        public void PopulateTableIndexes(SqlConnection con, List<DeclaredSqlTable> tables) {
+        public static void PopulateTableIndexes(SqlConnection con, List<DeclaredSqlTable> tables) {
             if (tables.Count == 0) return;
 
             // Create a lookup dictionary for quick table matching
