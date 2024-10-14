@@ -56,6 +56,47 @@ namespace TSQLAnalyzerLib.listeners
         }
 
 
+        public override void EnterCreate_index([Antlr4.Runtime.Misc.NotNull] Create_indexContext context) {
+            Table_nameContext? tableNameContext = context.table_name() ?? throw new InvalidDataException("Erorr:Create Index ON Non Table");
+            string database = (tableNameContext.database?.GetText() ?? DB).Replace("[", "").Replace("]", "");
+            string schema = (tableNameContext.schema.GetText() ?? "dbo").Replace("[", "").Replace("]", "");
+            string tableName = tableNameContext.table.GetText().Replace("[", "").Replace("]", "");
+
+            var table = DbCatalog.SeekIgnoreCase(database, schema, tableName);
+            if (table == null) {
+                Console.WriteLine($"database: {database} schema:{schema} table:{tableName} not found in catalog");
+                return;
+            }
+
+            /*
+             * Notice we're getting the 0th iteration of ID for this 
+                 : CREATE UNIQUE? clustered? INDEX id_ ON table_name '(' column_name_list_with_order ')' (
+                    INCLUDE '(' column_name_list ')'
+                )? (WHERE where = search_condition)? (create_index_options)? (ON id_)? ';'?            
+             */
+            string indexName = context.id_(0).GetText().Replace("[", "").Replace("]", "");
+            bool isUnique = context.UNIQUE() != null;
+            var clustered = context.clustered();
+            bool isClustered = context.clustered()?.GetText().ToUpper() == "CLUSTERED";
+            string where = context.search_condition()?.GetText() ?? "";
+            SqlIndex index = new(indexName, where, isUnique, isClustered, false);
+            var columns = context.column_name_list_with_order().id_();
+            AddColumnsToIndex(table, index, columns);
+            var includeColumns = context.column_name_list()?.id_() ?? Array.Empty<Id_Context>();
+            AddColumnsToIndex(table, index, includeColumns,true);
+            table.Indexes.Add(index);
+        }
+
+        private static void AddColumnsToIndex(DeclaredSqlTable? table, SqlIndex index, Id_Context[] columns,bool isIncluded = false) {
+            if(table == null) return;
+            foreach (var column in columns) {
+                var columnName = column.GetText().Replace("[", "").Replace("]", "");
+                if (columnName == null) { continue; }
+                DeclaredSqlColumn? col = table.Columns.Where((col) => col.ColumnName.ToLower() == columnName.ToLower()).First();
+                index.Columns.Add(col);
+                if (isIncluded) { index.IncludedColumns.Add(col); }
+            }
+        }
 
         public override void EnterInsert_statement([Antlr4.Runtime.Misc.NotNull] Insert_statementContext context) {
             CurrentStatement = new SqlStatement(AsBaseToken(context),FileName);

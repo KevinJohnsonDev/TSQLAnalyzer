@@ -164,11 +164,24 @@ namespace TSQLAnalyzerLib.analysis {
         }
 
         public DeclaredSqlTable? Seek(string db,string schema,string tableName) {
+            db = db.Replace("[", "").Replace("]", "");
+            schema = schema.Replace("[", "").Replace("]", "");
+            tableName = tableName.Replace("[", "").Replace("]", "");
             return Tables.FirstOrDefault((table) => table.Database == db &&
             table.Schema == schema &&
-            table.TableName == tableName
+            table.TableName== tableName
 );
         }
+        public DeclaredSqlTable? SeekIgnoreCase(string db, string schema, string tableName) {
+            db = db.ToLower();
+            schema = schema.ToLower();
+            tableName = tableName.ToLower();
+            return Tables.FirstOrDefault((table) => table.Database.ToLower() == db &&
+            table.Schema.ToLower() == schema &&
+            table.TableName.ToLower() == tableName
+);
+        }
+
         public void Add(DeclaredSqlTable table) { 
             Tables.Add(table); 
         }
@@ -281,6 +294,16 @@ namespace TSQLAnalyzerLib.analysis {
             Columns = columns;
             WhereClause = whereClause;
             IncludedColumns = includedColumns;
+            IsUnique = isUnique;
+            IsClustered = isClustered;
+            IsPrimaryKey = isPrimaryKey;
+        }
+
+        public SqlIndex(string name, string? whereClause,  bool isUnique, bool isClustered, bool isPrimaryKey) {
+            Name = name;
+            Columns = new List<DeclaredSqlColumn>();
+            WhereClause = whereClause;
+            IncludedColumns = new List<DeclaredSqlColumn>();
             IsUnique = isUnique;
             IsClustered = isClustered;
             IsPrimaryKey = isPrimaryKey;
