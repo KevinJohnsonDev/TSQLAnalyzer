@@ -56,48 +56,6 @@ namespace TSQLAnalyzerLib.listeners
         }
 
 
-        public override void EnterCreate_index([Antlr4.Runtime.Misc.NotNull] Create_indexContext context) {
-            Table_nameContext? tableNameContext = context.table_name() ?? throw new InvalidDataException("Erorr:Create Index ON Non Table");
-            string database = (tableNameContext.database?.GetText() ?? DB).Replace("[", "").Replace("]", "");
-            string schema = (tableNameContext.schema.GetText() ?? "dbo").Replace("[", "").Replace("]", "");
-            string tableName = tableNameContext.table.GetText().Replace("[", "").Replace("]", "");
-
-            var table = DbCatalog.SeekIgnoreCase(database, schema, tableName);
-            if (table == null) {
-                Console.WriteLine($"database: {database} schema:{schema} table:{tableName} not found in catalog");
-                return;
-            }
-
-            /*
-             * Notice we're getting the 0th iteration of ID for this 
-                 : CREATE UNIQUE? clustered? INDEX id_ ON table_name '(' column_name_list_with_order ')' (
-                    INCLUDE '(' column_name_list ')'
-                )? (WHERE where = search_condition)? (create_index_options)? (ON id_)? ';'?            
-             */
-            string indexName = context.id_(0).GetText().Replace("[", "").Replace("]", "");
-            bool isUnique = context.UNIQUE() != null;
-            var clustered = context.clustered();
-            bool isClustered = context.clustered()?.GetText().ToUpper() == "CLUSTERED";
-            string where = context.search_condition()?.GetText() ?? "";
-            SqlIndex index = new(indexName, where, isUnique, isClustered, false);
-            var columns = context.column_name_list_with_order().id_();
-            AddColumnsToIndex(table, index, columns);
-            var includeColumns = context.column_name_list()?.id_() ?? Array.Empty<Id_Context>();
-            AddColumnsToIndex(table, index, includeColumns,true);
-            table.Indexes.Add(index);
-        }
-
-        private static void AddColumnsToIndex(DeclaredSqlTable? table, SqlIndex index, Id_Context[] columns,bool isIncluded = false) {
-            if(table == null) return;
-            foreach (var column in columns) {
-                var columnName = column.GetText().Replace("[", "").Replace("]", "");
-                if (columnName == null) { continue; }
-                DeclaredSqlColumn? col = table.Columns.Where((col) => col.ColumnName.ToLower() == columnName.ToLower()).First();
-                index.Columns.Add(col);
-                if (isIncluded) { index.IncludedColumns.Add(col); }
-            }
-        }
-
         public override void EnterInsert_statement([Antlr4.Runtime.Misc.NotNull] Insert_statementContext context) {
             CurrentStatement = new SqlStatement(AsBaseToken(context),FileName);
             Ddl_objectContext ddlObj = context.ddl_object();
@@ -392,46 +350,6 @@ namespace TSQLAnalyzerLib.listeners
             throw new Exception("Declaration not handled");
         }   
 
-        
-        private SqlDataType Extracted_Data_Type(Data_typeContext dtc) {
-            var parms = dtc.DECIMAL();
-            var baseType = dtc.children[0].GetText();
-            int? precision = null;
-            int? scale = null;
-            if (parms.Length > 0) precision = Int32.Parse(parms[0].GetText());
-            if (parms.Length > 1) scale = Int32.Parse(parms[1].GetText());
-            return new SqlDataType(AsBaseToken(dtc),baseType,precision,scale);
-        }
-
-        public override void EnterSelect_list([NN] Select_listContext ctx)
-        {
-        }
-
-        public override void EnterAlter_table([NN] Alter_tableContext ctx) {
-            var nameToken = ctx.GetChild<Table_nameContext>(0);
-            var db = nameToken.database?.GetText() ?? DB;
-            var schema = nameToken.schema?.GetText() ?? "dbo";
-            var tableName = nameToken.table.GetText();
-            var target = DbCatalog.Seek(db, schema, tableName);
-            if (target == null) return; /*should probably emit a warning*/
-            var isAlter = ctx.ALTER() != null;
-            var isAdd = ctx.ADD() != null;
-            var isDrop = ctx.DROP() != null;
-            var isColumn = ctx.COLUMN != null;
-            if (isAlter && isAdd) {
-                var column = ExtractedColumnDefinition(ctx.column_def_table_constraints().column_def_table_constraint(0));
-                target.Add(column);
-            }
-            else if (isAlter && isDrop && isColumn) {
-                var column = ctx.id_(0).ID().GetText();
-                target.Drop(column);
-                Console.Write(column.ToString());
-            }
-            else if(isAlter) {
-                var column = ExtractedColumnDefinition(ctx.column_def_table_constraints().column_def_table_constraint(0));
-                target.Alter(column);     
-            }
-        }
 
         public override void EnterCreate_table([NN] Create_tableContext ctx) {
            var nameToken = ctx.GetChild<Table_nameContext>(0);
@@ -439,7 +357,8 @@ namespace TSQLAnalyzerLib.listeners
            var schema = nameToken.schema?.GetText() ?? "dbo";
            var tableName = nameToken.table.GetText();
            var columns = new List<DeclaredSqlColumn>();
-
+           string? pkName = null;
+            DeclaredSqlColumn? pkCol = null;
             /*
              * CREATE --> Token 0 Ignore
              * TABLE --> Token 1 Ignore
@@ -455,24 +374,133 @@ namespace TSQLAnalyzerLib.listeners
                 foreach(var token in columnConstraint.children) {
                     if (token is Column_def_table_constraintContext column) {
                         var col = ExtractedColumnDefinition(column);
-                        if(col is not null) {
-                            columns.Add(ExtractedColumnDefinition(column));
-                        }
+                        if (col is null) { continue; }
+                            columns.Add(col);
+                            var (isPrimaryKey,constraintName) = ExtractPrimaryKeyColumnConstraint(column);
+                            if (isPrimaryKey) {
+                                pkName = constraintName;
+                                pkCol = col;
+                            }
                     }
                 }         
             }
-            DbCatalog.Add(new DeclaredSqlTable(AsBaseToken(ctx), db, schema, tableName, columns));
+            var table = new DeclaredSqlTable(AsBaseToken(ctx), db, schema, tableName, columns);
+            if (pkCol is not null) { table.SetPrimaryKey(pkCol, pkName); }
+            DbCatalog.Add(table);
+
+        }
+
+        public override void EnterAlter_table([NN] Alter_tableContext ctx) {
+            var nameToken = ctx.GetChild<Table_nameContext>(0);
+            var db = nameToken.database?.GetText() ?? DB;
+            var schema = nameToken.schema?.GetText() ?? "dbo";
+            var tableName = nameToken.table.GetText();
+            var target = DbCatalog.Seek(db, schema, tableName);
+            if (target == null) return; /*should probably emit a warning*/
+            var isAlter = ctx.ALTER() != null;
+            var isAdd = ctx.ADD() != null;
+            var isDrop = ctx.DROP() != null;
+            var isColumn = ctx.COLUMN != null;
+
+            if (isAlter && isAdd && isColumn) {
+                var con = ctx.column_def_table_constraints().column_def_table_constraint(0);
+                var tableConstraint = con.table_constraint();
+                if (tableConstraint == null) {
+                    var column = ExtractedColumnDefinition(ctx.column_def_table_constraints().column_def_table_constraint(0));
+                    target.Add(column);
+                }
+                else {
+                    var id = tableConstraint.id_(0);
+                    var constraintName = id?.GetText() ?? "[AutoGenerated]";
+                    var isUnique = tableConstraint.UNIQUE() != null;
+                    if (isUnique) {
+                        SqlIndex index = new(constraintName, "", isUnique, false, false);
+                        var columns = tableConstraint.column_name_list_with_order().id_();
+                        AddColumnsToIndex(target, index, columns);
+                        target.Add(index);
+                    }
+                }
+            }
+            else if (isAlter && isDrop && isColumn) {
+                var column = ctx.id_(0).ID().GetText();
+                target.Drop(column);
+            }
+            else if (isAlter) {
+                var column = ExtractedColumnDefinition(ctx.column_def_table_constraints().column_def_table_constraint(0));
+                target.Alter(column);
+            }
+
+        }
+
+
+        public override void EnterCreate_index([Antlr4.Runtime.Misc.NotNull] Create_indexContext context) {
+            Table_nameContext? tableNameContext = context.table_name() ?? throw new InvalidDataException("Erorr:Create Index ON Non Table");
+            string database = (tableNameContext.database?.GetText() ?? DB).Replace("[", "").Replace("]", "");
+            string schema = (tableNameContext.schema.GetText() ?? "dbo").Replace("[", "").Replace("]", "");
+            string tableName = tableNameContext.table.GetText().Replace("[", "").Replace("]", "");
+
+            var table = DbCatalog.SeekIgnoreCase(database, schema, tableName);
+            if (table == null) {
+                Console.WriteLine($"database: {database} schema:{schema} table:{tableName} not found in catalog");
+                return;
+            }
+
+            /*
+             * Notice we're getting the 0th iteration of ID for this 
+                 : CREATE UNIQUE? clustered? INDEX id_ ON table_name '(' column_name_list_with_order ')' (
+                    INCLUDE '(' column_name_list ')'
+                )? (WHERE where = search_condition)? (create_index_options)? (ON id_)? ';'?            
+             */
+            string indexName = context.id_(0).GetText().Replace("[", "").Replace("]", "");
+            bool isUnique = context.UNIQUE() != null;
+            bool isClustered = context.clustered()?.GetText().ToUpper() == "CLUSTERED";
+            string where = context.search_condition()?.GetText() ?? "";
+            SqlIndex index = new(indexName, where, isUnique, isClustered, false);
+            var columns = context.column_name_list_with_order().id_();
+            AddColumnsToIndex(table, index, columns);
+            var includeColumns = context.column_name_list()?.id_() ?? Array.Empty<Id_Context>();
+            AddColumnsToIndex(table, index, includeColumns, true);
+            table.Indexes.Add(index);
+        }
+
+        private static void AddColumnsToIndex(DeclaredSqlTable? table, SqlIndex index, Id_Context[] columns, bool isIncluded = false) {
+            if (table == null) return;
+            foreach (var column in columns) {
+                var columnName = column.GetText().Replace("[", "").Replace("]", "");
+                if (columnName == null) { continue; }
+                DeclaredSqlColumn? col = table.Columns.Where((col) => col.ColumnName.ToLower() == columnName.ToLower()).First();
+                index.Columns.Add(col);
+                if (isIncluded) { index.IncludedColumns.Add(col); }
+            }
+        }
+
+
+        private (bool,string) ExtractPrimaryKeyColumnConstraint(Column_def_table_constraintContext column) {
+            var colToken = column.children[0] as Column_definitionContext;
+            var constraintToken = column.children[0] as Table_constraintContext;
+            if (colToken is null && constraintToken is not null) { return (false,""); }
+#pragma warning disable  CS8602 // Dereference of a possibly null reference, if it's null the parsers broke
+            var columnDefinitionElement = FindInstancesOfParentType<Column_definition_elementContext>(colToken.children);
+#pragma warning restore CS8602 // Dereference of a possibly null reference.
+            foreach (var def in columnDefinitionElement) {
+                foreach(Column_constraintContext child in def.children.Cast<Column_constraintContext>()) {
+                    if (HasPrimaryKeyDeclaration(child)) {
+                        return (true, "");
+                    }
+                }
+
+            }
+            return (false, "");
         }
         private DeclaredSqlColumn ExtractedColumnDefinition(Column_def_table_constraintContext column) {
             var colToken = column.children[0] as Column_definitionContext;
             var constraintToken = column.children[0] as Table_constraintContext;
             if (colToken is null && constraintToken is not null) { return null; }
 #pragma warning disable CS8602 // Dereference of a possibly null reference, if it's null the parsers broke
-            var nameID = colToken.id_();
             var possibleNullabilityDeclarationTokens = FindInstancesOfParentType<Column_definition_elementContext>(colToken.children);
             var nullability = ColumnIsNullable(possibleNullabilityDeclarationTokens);
-            var IDID = nameID.ID();
-            var name = IDID.GetText();
+            var name = colToken.id_().ID().GetText();
+
 #pragma warning restore CS8602 // Dereference of a possibly null reference.
             SqlDataType dt;
             if (colToken.AS() != null) {
@@ -484,6 +512,16 @@ namespace TSQLAnalyzerLib.listeners
                 dt = Extracted_Data_Type(colToken.data_type());
             }
             return new DeclaredSqlColumn(AsBaseToken(colToken), name, dt, nullability);
+        }
+
+        private SqlDataType Extracted_Data_Type(Data_typeContext dtc) {
+            var parms = dtc.DECIMAL();
+            var baseType = dtc.children[0].GetText();
+            int? precision = null;
+            int? scale = null;
+            if (parms.Length > 0) precision = Int32.Parse(parms[0].GetText());
+            if (parms.Length > 1) scale = Int32.Parse(parms[1].GetText());
+            return new SqlDataType(AsBaseToken(dtc), baseType, precision, scale);
         }
 
         private bool ColumnIsNullable(Column_definition_elementContext[] cde) {
