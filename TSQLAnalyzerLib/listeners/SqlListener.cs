@@ -55,7 +55,9 @@ namespace TSQLAnalyzerLib.listeners
             _inWhere = false;
         }
 
-
+        public override void ExitSelect_statement_standalone([Antlr4.Runtime.Misc.NotNull] Select_statement_standaloneContext context) {
+            CurrentStatement.Resolve(DbCatalog);
+        }
         public override void EnterInsert_statement([Antlr4.Runtime.Misc.NotNull] Insert_statementContext context) {
             CurrentStatement = new SqlStatement(AsBaseToken(context),FileName);
             Ddl_objectContext ddlObj = context.ddl_object();
@@ -122,8 +124,9 @@ namespace TSQLAnalyzerLib.listeners
          }
         public override void ExitSubquery([Antlr4.Runtime.Misc.NotNull] SubqueryContext context)
         {
+            CurrentStatement.Resolve(DbCatalog);
             _subqueryDepth -= 1;
-            CurrentStatement.ExitSubquery();
+            CurrentStatement.ExitSubquery(DbCatalog);
         }
 
         public override void ExitQuery_specification([NN] Query_specificationContext context)

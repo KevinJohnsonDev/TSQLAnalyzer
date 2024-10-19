@@ -167,10 +167,20 @@ namespace TSQLAnalyzerLib.analysis {
             db = db.Replace("[", "").Replace("]", "");
             schema = schema.Replace("[", "").Replace("]", "");
             tableName = tableName.Replace("[", "").Replace("]", "");
-            return Tables.FirstOrDefault((table) => table.Database == db &&
-            table.Schema == schema &&
-            table.TableName== tableName
-);
+            return Tables.FirstOrDefault(
+                (table) =>  table.Database == db &&
+                            table.Schema == schema &&
+                            table.TableName== tableName);
+        }
+
+        public DeclaredSqlTable? Seek(SqlTable table) {
+            var db = table.Database.Replace("[", "").Replace("]", "");
+            var schema = table.Schema.Replace("[", "").Replace("]", "");
+            var tableName = table.TableName.Replace("[", "").Replace("]", "");
+            return Tables.FirstOrDefault(
+                (table) => table.Database == db &&
+                            table.Schema == schema &&
+                            table.TableName == tableName);
         }
         public DeclaredSqlTable? SeekIgnoreCase(string db, string schema, string tableName) {
             db = db.ToLower();
@@ -326,7 +336,7 @@ namespace TSQLAnalyzerLib.analysis {
 
         public IList<DeclaredSqlColumn> Columns { get; init; }
 
-        public DeclaredSqlTable(BaseToken token,string database,string schema, string tableName, IList<DeclaredSqlColumn> columns) {
+        public DeclaredSqlTable(BaseToken token, string database, string schema, string tableName, IList<DeclaredSqlColumn> columns) {
             TokenText = token.TokenText;
             Start = token.Start;
             End = token.End;
@@ -335,6 +345,7 @@ namespace TSQLAnalyzerLib.analysis {
             TableName = tableName;
             Columns = columns;
             Indexes = new List<SqlIndex>();
+            foreach (var col in Columns) { col.Table = this; }
         }
         public DeclaredSqlTable(BaseToken token, string database, string schema, string tableName) {
             TokenText = token.TokenText;
@@ -345,15 +356,21 @@ namespace TSQLAnalyzerLib.analysis {
             TableName = tableName;
             Columns = new List<DeclaredSqlColumn>();
             Indexes = new List<SqlIndex>();
-
+            foreach(var col in Columns) { col.Table = this; }
         }
-        
+
         public void Add(SqlIndex index) => Indexes.Add(index);
-        public void Add(DeclaredSqlColumn col) => Columns.Add(col);
+        public void Add(DeclaredSqlColumn col){
+            Columns.Add(col);
+            col.Table = this;
+        }
         public void Alter(DeclaredSqlColumn col) {
 
             for(int i = 0; i < Columns.Count; i += 1) {
-                if(col.ColumnName == Columns[i].ColumnName) { Columns[i] = col; }
+                if(col.ColumnName == Columns[i].ColumnName) { 
+                    Columns[i] = col;
+                    col.Table = this;
+                }
             }
         }
 
@@ -397,9 +414,10 @@ namespace TSQLAnalyzerLib.analysis {
 
         public bool IsNullable { get; init; }
 
+        public DeclaredSqlTable Table { get; set; }
 
         public SqlDataType SqlType { get; init; }
-        public DeclaredSqlColumn(BaseToken token,string columnName,SqlDataType sqlType,bool isNullable) {
+        public DeclaredSqlColumn( BaseToken token,string columnName,SqlDataType sqlType,bool isNullable) {
             TokenText = token.TokenText;
             Start = token.Start;
             End = token.End;
@@ -422,7 +440,6 @@ namespace TSQLAnalyzerLib.analysis {
         public string Database { get; init; }
         public string Schema { get; init; }
         public string TableName { get; init; }
-
 
         public DeclaredSqlTable? ResolvedTable { get; init; }
 
@@ -503,7 +520,7 @@ namespace TSQLAnalyzerLib.analysis {
         public string Alias { get; set; }
 
         /* This references the fully resolved table post parse */
-        public SqlTable? Table { get; set; }
+        public DeclaredSqlTable? Table { get; set; }
 
         /* This represents either the table OR the named table expression that this column references during parseTime */
         public string OwnerID { get; init; }
@@ -518,15 +535,7 @@ namespace TSQLAnalyzerLib.analysis {
             OwnerID = ownerID;
             SqlType = sqlType;
         }
-
-        public SqlColumn(BaseToken token,SqlTable table, SqlDataType? sqlType = null) {
-            TokenText = token.TokenText;
-            Start = token.Start;
-            End = token.End;
-            Table = table;
-            SqlType = sqlType;
-
-        }
+        
 
 
         public override string ToString() => $"{TokenText}:{Start}-{End}\n\tColumnName:{ColumnName}\n\tUsedAs:{UsedAs}\n\tOwnerID:{OwnerID}\n\tTable:{Table?.ToString()}";
@@ -556,6 +565,17 @@ namespace TSQLAnalyzerLib.analysis {
         private Stack<Subquery> PendingSubqueries { get;}
 
         private readonly List<ISargable> _nonSargableTokens = new();
+
+        private readonly Dictionary<SqlTable, DeclaredSqlTable> resolvedSqlTables = new();
+        public Dictionary<SqlTable,DeclaredSqlTable> ResolvedTables { get { return resolvedSqlTables; } }
+       
+        private readonly Dictionary<SqlColumn,DeclaredSqlColumn> _resolvedSqlColumns = new();
+
+        public Dictionary<SqlColumn,DeclaredSqlColumn> ResolvedColumns{ get { return _resolvedSqlColumns; } }
+
+        public List<SqlTable> UnresolvedTables { get; } = new List<SqlTable>();
+        public List<SqlColumn> UnresolvedColumns { get; } = new List<SqlColumn>();
+
         public IEnumerable<ISargable> NonSargableTokens 
         {
             get
@@ -616,7 +636,12 @@ namespace TSQLAnalyzerLib.analysis {
         {
             var col = new SqlColumn(token,tableName, columnName);
             Columns.Add(col);
-            CurrentSubquery?.Columns.Add(col);
+            if(CurrentSubquery is not null) {
+                CurrentSubquery.Columns.Add(col);
+                CurrentSubquery.UnresolvedColumns.Add(col);
+            }
+            else { UnresolvedColumns.Add(col); }
+
             CurrentAliasable = col;
         }
 
@@ -632,6 +657,35 @@ namespace TSQLAnalyzerLib.analysis {
             Predicates.Add(pred); 
         }
 
+        public void Resolve(Catalog catalog) {
+            Dictionary<SqlColumn,List<DeclaredSqlColumn>> potentials = new();
+            List<SqlTable> remainingTables = new();
+            List<SqlColumn> remainingColumns = new();
+            foreach (SqlTable table in UnresolvedTables) {
+                DeclaredSqlTable? dst = catalog.Seek(table);
+                if (dst is null) {
+                    remainingTables.Add(table);
+                    continue;
+                }
+                ResolvedTables.Add(table,dst);
+                foreach (SqlColumn col in UnresolvedColumns) {
+                    DeclaredSqlColumn? tableCol = dst.Columns.FirstOrDefault((tableCol) => tableCol.ColumnName == col.ColumnName);
+                    if (tableCol is null) { continue; }
+                    if(col.OwnerID == table.Alias) {
+                        ResolvedColumns.Add(col, tableCol);
+                        col.Table = tableCol.Table;
+                        continue;
+                    }
+                    if(col.OwnerID == table.TableName && table.Alias == "") {
+                        ResolvedColumns.Add(col, tableCol);
+                        continue;
+                    }
+                }
+                UnresolvedColumns.RemoveAll(col => ResolvedColumns.Keys.Contains(col));
+
+            }
+            UnresolvedTables.AddRange(remainingTables);
+        }
         public void AddTable(BaseToken token, string db, string schema, string tableName) => AddTable(new SqlTable(token, db, schema, tableName));
         public void AddTable(BaseToken token, string schema, string tableName) => AddTable(new SqlTable(token, schema, tableName));
         public void AddTable(BaseToken token, string tableName) => AddTable(new SqlTable(token, "dbo", tableName));
@@ -642,22 +696,32 @@ namespace TSQLAnalyzerLib.analysis {
         public void AddTable(SqlTable tbl) {
             CurrentAliasable = tbl;
             Tables.Add(tbl);
-            CurrentSubquery?.Tables.Add(tbl);
+            if(CurrentSubquery is not null) {
+                CurrentSubquery.Tables.Add(tbl);
+                CurrentSubquery.UnresolvedTables.Add(tbl);
+            }
+            else {
+                UnresolvedTables.Add(tbl);
+            }
+
         }
         public void EnterSubquery(BaseToken token)
         {
-            var cur = new Subquery(token,FileName);
+            var cur = new Subquery(CurrentSubquery ?? this,token,FileName);
             var target = CurrentSubquery ?? this;
             target.Subqueries.Add(cur);
             PendingSubqueries.Push(cur);     
             CurrentSubquery = cur;
         }
 
-        public void ExitSubquery()
+        public void ExitSubquery(Catalog catalog)
         {
+            CurrentSubquery.Resolve(catalog);
             CurrentAliasable = PendingSubqueries.Pop();
             CurrentSubquery = (Subquery)CurrentAliasable;
         }
+
+        
 
         public void EnterDDL_Object() {
 
@@ -681,10 +745,13 @@ namespace TSQLAnalyzerLib.analysis {
 
     public class Subquery : SqlStatement, IAliasable
     {
+        public SqlStatement parent;
         public String Alias { get; set; } = "";
         public bool UsedAs { get; set; }
 
-        public Subquery(BaseToken token,string fileName):base( token, fileName) { }
+        public Subquery(SqlStatement parentScope,BaseToken token,string fileName):base( token, fileName) {
+            parent = parentScope;
+        }
 
         public Subquery(BaseToken token, String db, bool usesDistinct, string fileName)
             :base(token,db,usesDistinct, fileName) {}
