@@ -113,7 +113,7 @@ namespace TSQLAnalyzerLibTests {
         SET VAL = VAL 
         FROM dbo.B AS B
         JOIN dbo.C AS C
-        WHERE B.ID = C.ID;
+        ON B.ID = C.ID;
         ";
             SqlListener listener = TestMethods.Init(fullyQualifiedWithImplicitSameName);
             TableUsageReporter tur = new(listener.Statements);
@@ -129,7 +129,7 @@ namespace TSQLAnalyzerLibTests {
         DELETE B
         FROM dbo.B AS B
         JOIN dbo.C AS C
-        WHERE B.ID = C.ID;
+        ON B.ID = C.ID;
         ";
             SqlListener listener = TestMethods.Init(fullyQualifiedWithImplicitSameName);
             TableUsageReporter tur = new(listener.Statements);

@@ -10,6 +10,7 @@ using System.Text;
 using System.Threading.Tasks;
 using static Antlr4.Runtime.Atn.SemanticContext;
 using static System.Net.Mime.MediaTypeNames;
+using System.Security.Cryptography;
 
 namespace TSQLAnalyzerLib.analysis {
 
@@ -523,7 +524,7 @@ namespace TSQLAnalyzerLib.analysis {
         public DeclaredSqlTable? Table { get; set; }
 
         /* This represents either the table OR the named table expression that this column references during parseTime */
-        public string OwnerID { get; init; }
+        public string OwnerID { get; set; }
 
         public SqlDataType? SqlType { get; set; }
 
@@ -635,12 +636,15 @@ namespace TSQLAnalyzerLib.analysis {
         public void AddColumn(BaseToken token,string tableName,string columnName )
         {
             var col = new SqlColumn(token,tableName, columnName);
-            Columns.Add(col);
+
             if(CurrentSubquery is not null) {
                 CurrentSubquery.Columns.Add(col);
                 CurrentSubquery.UnresolvedColumns.Add(col);
             }
-            else { UnresolvedColumns.Add(col); }
+            else {
+                UnresolvedColumns.Add(col);
+                Columns.Add(col);
+            }
 
             CurrentAliasable = col;
         }
@@ -650,6 +654,14 @@ namespace TSQLAnalyzerLib.analysis {
             if(CurrentAliasable == null) { return; }/*Case where Constant has alias so we don't need to mark constants as columns*/
             CurrentAliasable.Alias = alias;
             CurrentAliasable.UsedAs = usedAs;
+            if(CurrentAliasable is Subquery sub) {
+               foreach(var column in sub.Columns) {
+                    column.OwnerID = alias;
+                }
+               foreach(var table in sub.Tables) {
+                    table.Alias = alias;
+                }
+            }
             CurrentAliasable = null;
         }
 
@@ -667,44 +679,56 @@ namespace TSQLAnalyzerLib.analysis {
                     remainingTables.Add(table);
                     continue;
                 }
-                ResolvedTables.Add(table,dst);
-                foreach (SqlColumn col in UnresolvedColumns) {
+                ResolvedTables.Add(table, dst);
+            }
+            UnresolvedTables.Clear();
+            UnresolvedTables.AddRange(remainingTables);
+
+            foreach (SqlColumn col in UnresolvedColumns) {
+                foreach(var kvp in ResolvedTables) {
+                    var dst = kvp.Value;
+                    var table = kvp.Key;
                     DeclaredSqlColumn? tableCol = dst.Columns.FirstOrDefault((tableCol) => tableCol.ColumnName == col.ColumnName);
                     if (tableCol is null) { continue; }
-                    if(col.OwnerID == table.Alias) {
+                    if (col.OwnerID == table.Alias) {
                         ResolvedColumns.Add(col, tableCol);
                         col.Table = tableCol.Table;
                         continue;
                     }
-                    if(col.OwnerID == table.TableName && table.Alias == "") {
+                    if (col.OwnerID == table.TableName && table.Alias == "") {
                         ResolvedColumns.Add(col, tableCol);
                         continue;
                     }
                 }
-                UnresolvedColumns.RemoveAll(col => ResolvedColumns.Keys.Contains(col));
+              
 
-            }
-            UnresolvedTables.AddRange(remainingTables);
+           }
+            UnresolvedColumns.RemoveAll(col => ResolvedColumns.Keys.Contains(col));
         }
-        public void AddTable(BaseToken token, string db, string schema, string tableName) => AddTable(new SqlTable(token, db, schema, tableName));
-        public void AddTable(BaseToken token, string schema, string tableName) => AddTable(new SqlTable(token, schema, tableName));
-        public void AddTable(BaseToken token, string tableName) => AddTable(new SqlTable(token, "dbo", tableName));
+        public void AddTable(BaseToken token, string db, string schema, string tableName, Catalog catalog) => AddTable(new SqlTable(token, db, schema, tableName),catalog);
+        public void AddTable( BaseToken token, string schema, string tableName, Catalog catalog) => AddTable(new SqlTable(token, schema, tableName), catalog);
+        public void AddTable(BaseToken token, string tableName, Catalog catalog) => AddTable(new SqlTable(token, "dbo", tableName), catalog);
 
-        public void AddTable(BaseToken token, DeclaredSqlTable dst) => AddTable(new SqlTable(token, dst));
+        public void AddTable(BaseToken token, DeclaredSqlTable dst, Catalog catalog) => AddTable(new SqlTable(token, dst),catalog);
 
 
-        public void AddTable(SqlTable tbl) {
+        public void AddTable(SqlTable tbl, Catalog catalog) {
             CurrentAliasable = tbl;
-            Tables.Add(tbl);
-            if(CurrentSubquery is not null) {
-                CurrentSubquery.Tables.Add(tbl);
-                CurrentSubquery.UnresolvedTables.Add(tbl);
-            }
-            else {
-                UnresolvedTables.Add(tbl);
-            }
-
+            DeclaredSqlTable? dst = catalog.Seek(tbl);
+            AppendTable(this, dst, tbl);
+            AppendTable(CurrentSubquery, dst, tbl);
         }
+
+        private static void AppendTable(SqlStatement? sqlStatement, DeclaredSqlTable? dst,SqlTable tbl) {
+      
+            if(sqlStatement is null) { return; }
+            sqlStatement.Tables.Add(tbl);
+            if (dst != null) { sqlStatement.ResolvedTables.Add(tbl, dst); }
+            else { sqlStatement.UnresolvedTables.Add(tbl); }
+        }
+
+
+
         public void EnterSubquery(BaseToken token)
         {
             var cur = new Subquery(CurrentSubquery ?? this,token,FileName);
@@ -716,9 +740,11 @@ namespace TSQLAnalyzerLib.analysis {
 
         public void ExitSubquery(Catalog catalog)
         {
-            CurrentSubquery.Resolve(catalog);
-            CurrentAliasable = PendingSubqueries.Pop();
-            CurrentSubquery = (Subquery)CurrentAliasable;
+            CurrentSubquery?.Resolve(catalog);
+            
+            if (PendingSubqueries.Count > 0) {  CurrentAliasable = PendingSubqueries.Pop();}
+            if (PendingSubqueries.Count > 0) {CurrentSubquery = PendingSubqueries.Pop();}
+            else { CurrentSubquery = null; };
         }
 
         
