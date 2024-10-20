@@ -310,30 +310,32 @@ namespace TSQLAnalyzerLib.listeners
             var table = "";
             var schema = "dbo";
             var database = "";
+            string alias = ata?.GetText() ?? "";
+            var usedAS = alias.Length > 2 && alias.Substring(0, 2) == "AS";
+            if (usedAS) { alias = alias.Substring(2); }
 
             if (ftn is not null) {
                 table = ftn.GetFullText();
+
+                var parts = table.Split(".");
+                var plen = parts.Length;
+                var tableName = parts[plen - 1];
+                if (parts.Length > 1) { schema = parts[plen - 2]; }
+                if (parts.Length > 2) { database = parts[plen - 3]; }
+                else { database = DB; }
+                DeclaredSqlTable? dt = DbCatalog.Seek(database, schema, tableName);
+                if (dt is not null) {
+                    CurrentStatement.AddTable(context, dt, alias, usedAS, DbCatalog);
+                }
+                else {
+                    CurrentStatement.AddTable(context, database, schema, tableName, alias, usedAS ,DbCatalog);
+                }
             }
-            var parts = table.Split(".");
-            var plen = parts.Length;
-            var tableName = parts[plen - 1];
-            if (parts.Length > 1) { schema = parts[plen - 2]; }
-            if (parts.Length > 2) { database = parts[plen - 3]; }
-            else { database = DB; }
-            DeclaredSqlTable? dt = DbCatalog.Seek(database, schema, tableName);
-            if (dt is not null) {
-                CurrentStatement.AddTable(context, dt, DbCatalog);
-            }
-            else{
-                CurrentStatement.AddTable(context, database, schema, tableName, DbCatalog);
+            else if(derived is not null) {
+                CurrentStatement.AddDerivedTable(context, alias, usedAS);
             }
 
-            if (ata is not null) {
-                var alias = ata.GetText();
-                var usedAS = alias.Substring(0, 2) == "AS";
-                if (usedAS) { alias = alias.Substring(2); }
-                CurrentStatement.AppendAlias(alias, usedAS);
-            }
+
 
 
 

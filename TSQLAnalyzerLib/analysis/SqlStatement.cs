@@ -431,6 +431,14 @@ namespace TSQLAnalyzerLib.analysis {
             return new DeclaredSqlColumn(BaseToken.OnlineToken, columnName, sqlType,isNullable);
         }
     }
+
+    public class DerivedSQLTable : SqlTable {
+
+        public DerivedSQLTable(BaseToken token, Subquery sub,string database,string schema,string tableName,string alias,bool usedAS):base(token, database, schema,  tableName, alias, usedAS) {
+            Alias = tableName;
+            UsedAs = usedAS;
+        }
+    }
     public class SqlTable : ITokenText, IAliasable, IEquatable<SqlTable?> {
         public string Alias { get; set; } = "";
         public string TokenText { get; init; }
@@ -444,7 +452,7 @@ namespace TSQLAnalyzerLib.analysis {
 
         public DeclaredSqlTable? ResolvedTable { get; init; }
 
-        public SqlTable(BaseToken token, DeclaredSqlTable dst) {
+        public SqlTable(BaseToken token, DeclaredSqlTable dst, string alias, bool usedAs) {
             Database = dst.Database;
             Schema = dst.Schema;
             TableName = dst.TableName;
@@ -454,9 +462,11 @@ namespace TSQLAnalyzerLib.analysis {
             var prefix = String.IsNullOrWhiteSpace(Database) ? "" : $"{Database}.";
             FQN = $"{prefix}{Schema}.{TableName}";
             ResolvedTable = dst;
+            Alias = alias;
+            UsedAs = usedAs;
         }
 
-        public SqlTable(BaseToken token, string database,string schema, string tableName) {
+        public SqlTable(BaseToken token, string database,string schema, string tableName,string alias,bool usedAs) {
             Database = database;
             Schema = schema;
             TableName = tableName;
@@ -465,10 +475,11 @@ namespace TSQLAnalyzerLib.analysis {
             End = token.End;
             var prefix = String.IsNullOrWhiteSpace(Database) ? "" : $"{Database}.";
             FQN = $"{prefix}{Schema}.{TableName}";
-
+            Alias = alias;
+            UsedAs = usedAs;
         }
 
-        public SqlTable(BaseToken token, string schema, string tableName)
+        public SqlTable(BaseToken token, string schema, string tableName, string alias, bool usedAs)
         {
             Database = "";
             Schema = schema;
@@ -477,6 +488,8 @@ namespace TSQLAnalyzerLib.analysis {
             Start = token.Start;
             End = token.End;
             FQN = $"{Schema}.{TableName}";
+            Alias = alias;
+            UsedAs = usedAs;
         }
 
         public override string ToString() => $"{TokenText}:{Start}-{End}\n\tDatabase:{Database}\n\tSchema:{Schema}\n\tTableName:{TableName}\n\tAlias:{Alias}\n\tUsedAs:{UsedAs}";
@@ -562,6 +575,8 @@ namespace TSQLAnalyzerLib.analysis {
         public List<SqlColumn> Columns { get; } = new List<SqlColumn>();
 
         private IAliasable? CurrentAliasable { get; set; }
+
+        private Subquery PreviousSubquery { get; set; }
         private Subquery CurrentSubquery { get; set; }
         private Stack<Subquery> PendingSubqueries { get;}
 
@@ -654,14 +669,6 @@ namespace TSQLAnalyzerLib.analysis {
             if(CurrentAliasable == null) { return; }/*Case where Constant has alias so we don't need to mark constants as columns*/
             CurrentAliasable.Alias = alias;
             CurrentAliasable.UsedAs = usedAs;
-            if(CurrentAliasable is Subquery sub) {
-               foreach(var column in sub.Columns) {
-                    column.OwnerID = alias;
-                }
-               foreach(var table in sub.Tables) {
-                    table.Alias = alias;
-                }
-            }
             CurrentAliasable = null;
         }
 
@@ -705,15 +712,21 @@ namespace TSQLAnalyzerLib.analysis {
            }
             UnresolvedColumns.RemoveAll(col => ResolvedColumns.Keys.Contains(col));
         }
-        public void AddTable(BaseToken token, string db, string schema, string tableName, Catalog catalog) => AddTable(new SqlTable(token, db, schema, tableName),catalog);
-        public void AddTable( BaseToken token, string schema, string tableName, Catalog catalog) => AddTable(new SqlTable(token, schema, tableName), catalog);
-        public void AddTable(BaseToken token, string tableName, Catalog catalog) => AddTable(new SqlTable(token, "dbo", tableName), catalog);
+        public void AddTable(BaseToken token, string db, string schema, string tableName, string alias, bool usedAs, Catalog catalog) => AddTable(new SqlTable(token, db, schema, tableName,  alias,  usedAs),catalog);
+        public void AddTable( BaseToken token, string schema, string tableName , string alias, bool usedAs,Catalog catalog) => AddTable(new SqlTable(token, schema, tableName, alias, usedAs), catalog);
+        public void AddTable(BaseToken token, string tableName, string alias, bool usedAs,Catalog catalog) => AddTable(new SqlTable(token, "dbo", tableName, alias, usedAs), catalog);
 
-        public void AddTable(BaseToken token, DeclaredSqlTable dst, Catalog catalog) => AddTable(new SqlTable(token, dst),catalog);
+        public void AddTable(BaseToken token, DeclaredSqlTable dst,  string alias, bool usedAs ,Catalog catalog) => AddTable(new SqlTable(token, dst, alias, usedAs),catalog);
+
+        public void AddDerivedTable(BaseToken token,string alias,bool usedAs) {
+            var tbl = new DerivedSQLTable(token, PreviousSubquery, "", "", alias,alias,usedAs);
+            if(PreviousSubquery?.parent != this) { PreviousSubquery?.parent.Tables.Add(tbl); }
+            Tables.Add(tbl);
+            
+        }
 
 
         public void AddTable(SqlTable tbl, Catalog catalog) {
-            CurrentAliasable = tbl;
             DeclaredSqlTable? dst = catalog.Seek(tbl);
             AppendTable(this, dst, tbl);
             AppendTable(CurrentSubquery, dst, tbl);
@@ -740,9 +753,10 @@ namespace TSQLAnalyzerLib.analysis {
 
         public void ExitSubquery(Catalog catalog)
         {
+
             CurrentSubquery?.Resolve(catalog);
-            
-            if (PendingSubqueries.Count > 0) {  CurrentAliasable = PendingSubqueries.Pop();}
+            PreviousSubquery = CurrentSubquery;
+            if (PendingSubqueries.Count > 0) { PendingSubqueries.Pop();}
             if (PendingSubqueries.Count > 0) {CurrentSubquery = PendingSubqueries.Pop();}
             else { CurrentSubquery = null; };
         }
@@ -769,11 +783,10 @@ namespace TSQLAnalyzerLib.analysis {
         }
     }
 
-    public class Subquery : SqlStatement, IAliasable
+    public class Subquery : SqlStatement
     {
         public SqlStatement parent;
-        public String Alias { get; set; } = "";
-        public bool UsedAs { get; set; }
+
 
         public Subquery(SqlStatement parentScope,BaseToken token,string fileName):base( token, fileName) {
             parent = parentScope;
