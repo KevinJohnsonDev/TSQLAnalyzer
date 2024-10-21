@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using TSQLAnalyzerLib.statementComponent;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace TSQLAnalyzerLib.analysis
@@ -15,21 +16,21 @@ namespace TSQLAnalyzerLib.analysis
     public class SubqueryDepthReporter
     {
         public List<ISargable> Errors { get; init; }
-        public SubqueryDepthReporter(IEnumerable<SqlStatement> statements,int maxDepth = 3)
+        public SubqueryDepthReporter(IEnumerable<Statement> statements,int maxDepth = 3)
         {
             Errors = new List<ISargable>();
 
-            foreach (SqlStatement statement in statements)
+            foreach (Statement statement in statements)
             {
                 int depth = Depth(statement, 0);
                 if(depth > maxDepth) { Errors.Add(statement); }
             }
         }
 
-        private int Depth(SqlStatement statement, int currentDepth)
+        private int Depth(Statement statement, int currentDepth)
         {
             int maxDepth = currentDepth;
-            foreach(SqlStatement s in statement.Subqueries)
+            foreach(Statement s in statement.Subqueries)
             {
                 maxDepth = Math.Max(maxDepth,Depth(s,currentDepth+1));
             }

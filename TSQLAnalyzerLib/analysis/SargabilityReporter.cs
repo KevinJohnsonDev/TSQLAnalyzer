@@ -3,26 +3,27 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using TSQLAnalyzerLib.statementComponent;
 
 namespace TSQLAnalyzerLib.analysis
 {
     public class SargabilityReporter
     {
         public List<ISargable> Errors { get; init; }
-        public SargabilityReporter(IEnumerable<SqlStatement> statements) {
+        public SargabilityReporter(IEnumerable<Statement> statements) {
             Errors = new List<ISargable>();
 
-            foreach (SqlStatement statement in statements)
+            foreach (Statement statement in statements)
             {
                 Errors.AddRange(SargableDFS(statement));
             }
             
         }
 
-        public IEnumerable<ISargable> SargableDFS(SqlStatement statement)
+        public IEnumerable<ISargable> SargableDFS(Statement statement)
         {
             List<ISargable> tokens = new();
-            foreach (SqlStatement subquery in statement.Subqueries)
+            foreach (Statement subquery in statement.Subqueries)
             {
                 if (subquery == null) { continue; }
                 if (subquery.IsSargable()) { continue; }
@@ -34,11 +35,11 @@ namespace TSQLAnalyzerLib.analysis
             return tokens;
         }
 
-        private IEnumerable<ISargable> SargableDFS(IEnumerable<SqlPredicate> predicates)
+        private IEnumerable<ISargable> SargableDFS(IEnumerable<Predicate> predicates)
         {
             List<ISargable> tokens = new();
 
-            foreach (SqlPredicate predicate in predicates)
+            foreach (Predicate predicate in predicates)
             {
                 if (predicate == null) { continue; }
                 if (predicate.IsSargable()) { continue; }

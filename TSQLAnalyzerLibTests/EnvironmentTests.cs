@@ -1,7 +1,8 @@
-﻿using TSQLAnalyzerLib.analysis;
-using TSQLAnalyzerLib.listeners;
+﻿using TSQLAnalyzerLib.listeners;
+using TSQLAnalyzerLib.statementComponent;
 
-namespace TSQLAnalyzerLibTests {
+namespace TSQLAnalyzerLibTests
+{
     [TestClass]
     public class EnvironmentTests
     {
@@ -31,10 +32,10 @@ namespace TSQLAnalyzerLibTests {
             Assert.IsTrue(IsXNumeric(env.Variables[0].DeclaredDataType,15,10));
         }
 
-        private static bool IsXInt(SqlVariable v) => v.Name == "@X" && v.DeclaredDataType.BaseType == DataType.INT;
-        private static bool IsXNumeric(SqlDataType v, int? precision, int? scale)
+        private static bool IsXInt(Variable v) => v.Name == "@X" && v.DeclaredDataType.BaseType == SqlDataTypes.INT;
+        private static bool IsXNumeric(DataType v, int? precision, int? scale)
         {
-           return v.BaseType == DataType.NUMERIC && v.Precision == precision && v.Scale == scale;
+           return v.BaseType == SqlDataTypes.NUMERIC && v.Precision == precision && v.Scale == scale;
         }
 
     }

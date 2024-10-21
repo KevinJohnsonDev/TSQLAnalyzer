@@ -1,18 +1,18 @@
 ﻿using Microsoft.Data.SqlClient;
-using TSQLAnalyzerLib.analysis;
 using System.Collections.Generic;
 using System.Linq;
 using TSQLAnalyzerLib.listeners;
 using static System.Formats.Asn1.AsnWriter;
 using System.ComponentModel.DataAnnotations;
 using System;
+using TSQLAnalyzerLib.statementComponent;
 
 namespace TSQLAnalyzerLib.online
 {
     public class CatalogFetcher
     {
         private readonly string _connectionString;
-        private readonly Dictionary<string, List<DeclaredSqlTable>> _databaseSchemaTables = new();
+        private readonly Dictionary<string, List<ResolvedTable>> _databaseSchemaTables = new();
 
 
         public List<string> DatabaseNames { get; } = new List<string>();
@@ -23,7 +23,7 @@ namespace TSQLAnalyzerLib.online
         }
         public void InjectCatalog<T>(T sl) where T : SqlListener {
             var catalog = sl.DbCatalog;
-            foreach(KeyValuePair<string, List<DeclaredSqlTable>> kvp in _databaseSchemaTables){
+            foreach(KeyValuePair<string, List<ResolvedTable>> kvp in _databaseSchemaTables){
                 foreach(var table in kvp.Value) {
                     catalog.Add(table);
                 }
@@ -44,7 +44,7 @@ namespace TSQLAnalyzerLib.online
                 {
                     string name = sdr.GetString(sdr.GetOrdinal("name"));
                     DatabaseNames.Add(name);
-                    _databaseSchemaTables.Add(name, new List<DeclaredSqlTable>());
+                    _databaseSchemaTables.Add(name, new List<ResolvedTable>());
                 }
 
                 sdr.Close();
@@ -94,14 +94,14 @@ namespace TSQLAnalyzerLib.online
                 using SqlCommand cmd = new(query, con);
                 using SqlDataReader sdr = cmd.ExecuteReader();
 
-                var tables = new List<DeclaredSqlTable>();
+                var tables = new List<ResolvedTable>();
 
                 while (sdr.Read())
                 {
                     string schemaName = sdr.GetString(sdr.GetOrdinal("SchemaName"));
                     string tableName = sdr.GetString(sdr.GetOrdinal("TableName"));
 
-                    DeclaredSqlTable table = DeclaredSqlTable.FromDatabase(databaseName, schemaName, tableName);
+                    ResolvedTable table = ResolvedTable.FromDatabase(databaseName, schemaName, tableName);
                     tables.Add(table);
                     _databaseSchemaTables[databaseName].Add(table);
                 }
@@ -121,7 +121,7 @@ namespace TSQLAnalyzerLib.online
             }
         }
 
-        private void PopulateTableColumns(SqlConnection con, List<DeclaredSqlTable> tables)
+        private void PopulateTableColumns(SqlConnection con, List<ResolvedTable> tables)
         {
             if (tables.Count == 0) return;
 
@@ -194,8 +194,8 @@ namespace TSQLAnalyzerLib.online
 
                 if (tableMap.TryGetValue((schema, tableName), out var table))
                 {
-                    SqlDataType sdt = SqlDataType.FromDatabase(dataType, precision, scale);
-                    DeclaredSqlColumn col = DeclaredSqlColumn.FromDatabase(columnName, sdt, nullable);
+                    statementComponent.DataType sdt = statementComponent.DataType.FromDatabase(dataType, precision, scale);
+                    ResolvedColumn col = ResolvedColumn.FromDatabase(columnName, sdt, nullable);
                     table.Add(col);
                 }
                 else
@@ -207,7 +207,7 @@ namespace TSQLAnalyzerLib.online
             sdr.Close();
         }
 
-        public static void PopulateTableIndexes(SqlConnection con, List<DeclaredSqlTable> tables) {
+        public static void PopulateTableIndexes(SqlConnection con, List<ResolvedTable> tables) {
             if (tables.Count == 0) return;
 
             // Create a lookup dictionary for quick table matching
@@ -234,7 +234,7 @@ namespace TSQLAnalyzerLib.online
 
             using SqlCommand cmd = new(query, con);
             using SqlDataReader sdr = cmd.ExecuteReader();
-            SqlIndex? idx = null;
+            statementComponent.Index? idx = null;
             while (sdr.Read()) {
                 string schema = sdr.GetString(sdr.GetOrdinal("SchemaName"));
                 string tableName = sdr.GetString(sdr.GetOrdinal("TableName"));
@@ -250,20 +250,20 @@ namespace TSQLAnalyzerLib.online
                 int indexOrdinal = sdr.GetInt32(sdr.GetOrdinal("IndexOrdinal"));
                 int columnOrdinal = sdr.GetInt32(sdr.GetOrdinal("ColumnOrdinal"));
 
-                if (tableMap.TryGetValue((schema, tableName), out DeclaredSqlTable? table)) {
+                if (tableMap.TryGetValue((schema, tableName), out ResolvedTable? table)) {
                     if(columnOrdinal > table.Columns.Count) {
                         throw new InvalidOperationException($"Table {schema}.{tableName} does not have a {columnOrdinal} column, only has {table.Columns.Count} columns");
                     }
 
-                    DeclaredSqlColumn column = table.Columns[columnOrdinal - 1];
+                    ResolvedColumn column = table.Columns[columnOrdinal - 1];
 
                     if (indexOrdinal == 1) {
                         Console.WriteLine($"Index Processed {idx?.ToString() ?? "starting..."}");
-                        var columns = new List<DeclaredSqlColumn>() { column };
+                        var columns = new List<ResolvedColumn>() { column };
                         var uniquish = isUnique || IsUniqueConstraint;
-                        var includedColumns = new List<DeclaredSqlColumn>();
+                        var includedColumns = new List<ResolvedColumn>();
                         var isClustered = indexType == 1;
-                        idx = new SqlIndex(indexName, columns, predicate, includedColumns, uniquish, isClustered, isPrimaryKey);
+                        idx = new statementComponent.Index(indexName, columns, predicate, includedColumns, uniquish, isClustered, isPrimaryKey);
                         table.Add(idx);
                     }
                     else {

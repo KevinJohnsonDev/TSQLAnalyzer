@@ -3,27 +3,28 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using TSQLAnalyzerLib.analysis;
 using TSQLAnalyzerLib.listeners;
+using TSQLAnalyzerLib.statementComponent;
 
-namespace TSQLAnalyzerLibTests {
+namespace TSQLAnalyzerLibTests
+{
     [TestClass]
     public class ResolutionTests {
 
         [TestMethod]
         public void FullyQualifiedNameResolvesTableDuringParse() {
             BaseToken dummy = BaseToken.OnlineToken;
-            DeclaredSqlTable dst = new(dummy, "TestDB", "dbo", "example");
+            ResolvedTable dst = new(dummy, "TestDB", "dbo", "example");
             var input = "SELECT a.b AS D FROM TestDB.dbo.example";
-            SqlListener listener = TestMethods.Init(input,new List<DeclaredSqlTable>() { dst });
+            SqlListener listener = TestMethods.Init(input,new List<ResolvedTable>() { dst });
             Assert.IsTrue(listener.Statements[0].Tables[0].ResolvedTable == dst);
         }
         [TestMethod]
         public void FullyQualifiedDoesNotResolveWhenNotInCatalog() {
             BaseToken dummy = BaseToken.OnlineToken;
-            DeclaredSqlTable dst = new(dummy, "TestDB", "dbo", "example");
+            ResolvedTable dst = new(dummy, "TestDB", "dbo", "example");
             var input = "SELECT a.b AS D FROM TestDB.dbo.example2";
-            SqlListener listener = TestMethods.Init(input, new List<DeclaredSqlTable>() { dst });
+            SqlListener listener = TestMethods.Init(input, new List<ResolvedTable>() { dst });
             Assert.IsTrue(listener.Statements[0].Tables[0].ResolvedTable is null);
         }
         [TestMethod]

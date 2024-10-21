@@ -1,12 +1,13 @@
 ﻿using Antlr4.Runtime.Tree;
 using Antlr4.Runtime;
 using TSQLAnalyzerLib.listeners;
-using TSQLAnalyzerLib.analysis;
+using TSQLAnalyzerLib.statementComponent;
 
-namespace TSQLAnalyzerLibTests {
+namespace TSQLAnalyzerLibTests
+{
     public static class TestMethods
     {
-        public static SqlListener Init(string input, List<DeclaredSqlTable>? CatalogItems = null)
+        public static SqlListener Init(string input, List<ResolvedTable>? CatalogItems = null)
         {
             AntlrInputStream inputStream = new(input);
             TSqlLexer tsqlLexer = new(inputStream);

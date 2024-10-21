@@ -1,6 +1,5 @@
 ﻿using Antlr4.Runtime;
 using Antlr4.Runtime.Tree;
-using TSQLAnalyzerLib.analysis;
 using TSQLAnalyzerLib.listeners;
 using System.ComponentModel.DataAnnotations;
 using System.Xml.Linq;
@@ -9,23 +8,24 @@ using NN = System.Diagnostics.CodeAnalysis.NotNullAttribute;
 using System.Data;
 using static System.Formats.Asn1.AsnWriter;
 using System.Security.AccessControl;
+using TSQLAnalyzerLib.statementComponent;
 
 namespace TSQLAnalyzerLib.listeners
 {
     public class SqlListener : TSqlParserBaseListener
     {
-        public List<analysis.Environment> Environments { get; init; } = new List<analysis.Environment>();
+        public List<statementComponent.Environment> Environments { get; init; } = new List<statementComponent.Environment>();
         public Catalog DbCatalog { get; init; } = new();
         public String DB { get; set; } = "";
         public bool _inWhere = false;
         private int _caseExpressionDepth = 0;
         private int _subqueryDepth = 0;
-        public List<SqlStatement> Statements { get; } = new List<SqlStatement>();
+        public List<Statement> Statements { get; } = new List<Statement>();
         protected readonly Parser _parser;
-        private SqlStatement CurrentStatement { get; set; }
+        private Statement CurrentStatement { get; set; }
 
 
-        private analysis.Environment CurrentEnvironment { get; set; } = new analysis.Environment();
+        private statementComponent.Environment CurrentEnvironment { get; set; } = new statementComponent.Environment();
 
         public SqlListener([NN] Parser parser)
         {
@@ -59,7 +59,7 @@ namespace TSQLAnalyzerLib.listeners
             CurrentStatement.Resolve(DbCatalog);
         }
         public override void EnterInsert_statement([Antlr4.Runtime.Misc.NotNull] Insert_statementContext context) {
-            CurrentStatement = new SqlStatement(AsBaseToken(context),FileName);
+            CurrentStatement = new Statement(AsBaseToken(context),FileName);
             Ddl_objectContext ddlObj = context.ddl_object();
             Full_table_nameContext tableName = ddlObj.full_table_name();
             ExtractAndAddTableItem(AsBaseToken(context), tableName,null, null);
@@ -69,7 +69,7 @@ namespace TSQLAnalyzerLib.listeners
 
         public override void EnterBatch([Antlr4.Runtime.Misc.NotNull] BatchContext context)
         {
-            Environments.Add(new analysis.Environment());
+            Environments.Add(new statementComponent.Environment());
             CurrentEnvironment = Environments[Environments.Count-1];
         }
 
@@ -78,7 +78,7 @@ namespace TSQLAnalyzerLib.listeners
 
         public override void EnterSql_clauses([NN] Sql_clausesContext context)
         {
-            CurrentStatement = new SqlStatement(AsBaseToken(context), FileName);
+            CurrentStatement = new Statement(AsBaseToken(context), FileName);
 
         }
         public override void ExitSql_clauses([NN] Sql_clausesContext context)
@@ -148,15 +148,15 @@ namespace TSQLAnalyzerLib.listeners
                 var right = c.right;
                 var op = c.op.Text;
                 var rightText = right is null ? (op == "IS" ? "NULL" : "") : right.GetText();
-                var leftOp = new SqlOperand(AsBaseToken(left), left is Function_call_expressionContext, FunctionOverConstant(left),_inWhere,_caseExpressionDepth > 0, _subqueryDepth);
-                var rightOp = new SqlOperand(AsBaseToken(right,rightText), right is Function_call_expressionContext, FunctionOverConstant(right), _inWhere, _caseExpressionDepth > 0, _subqueryDepth);
-                CurrentStatement.AppendPredicate(new SqlPredicate(AsBaseToken(c), leftOp, rightOp, op, _inWhere, FileName));
+                var leftOp = new Operand(AsBaseToken(left), left is Function_call_expressionContext, FunctionOverConstant(left),_inWhere,_caseExpressionDepth > 0, _subqueryDepth);
+                var rightOp = new Operand(AsBaseToken(right,rightText), right is Function_call_expressionContext, FunctionOverConstant(right), _inWhere, _caseExpressionDepth > 0, _subqueryDepth);
+                CurrentStatement.AppendPredicate(new Predicate(AsBaseToken(c), leftOp, rightOp, op, _inWhere, FileName));
             }
             else if(child is Binary_in_expressionContext ec)
             {
                 var left = ec.left;
                 var op = ec.op.Text;
-                var leftOp = new SqlOperand(AsBaseToken(left), left is Function_call_expressionContext, FunctionOverConstant(left), _inWhere, _caseExpressionDepth > 0, _subqueryDepth);
+                var leftOp = new Operand(AsBaseToken(left), left is Function_call_expressionContext, FunctionOverConstant(left), _inWhere, _caseExpressionDepth > 0, _subqueryDepth);
                 var sub = ec.subquery();
                 var allFunctionsOverConstant = true; //Yes Not Exhaustive Check yet
                 var subqueryFunctions = FindInstancesOfParentType<Function_call_expressionContext>(sub.children);
@@ -176,7 +176,7 @@ namespace TSQLAnalyzerLib.listeners
                  * So to compensate we add 1 to the depth
                  */
 
-                var rightOp = new SqlOperand(
+                var rightOp = new Operand(
                     AsBaseToken(sub),
                     hasSubqueryFunctions,
                     allFunctionsOverConstant,
@@ -185,21 +185,21 @@ namespace TSQLAnalyzerLib.listeners
                     _subqueryDepth 
                 );
 
-                CurrentStatement.AppendPredicate(new SqlPredicate(AsBaseToken(ec), leftOp, rightOp, op, _inWhere, FileName));
+                CurrentStatement.AppendPredicate(new Predicate(AsBaseToken(ec), leftOp, rightOp, op, _inWhere, FileName));
 
 
             }
             else if (child is PredicateContext pc) {
                 if(pc.ChildCount == 3) {
-                    var leftOp = new SqlOperand(AsBaseToken(pc.children[0] as ParserRuleContext), pc.children[0] is Function_call_expressionContext, FunctionOverConstant(pc.children[0] as ExpressionContext), _inWhere, pc.children[0] is Case_expression_stubContext, _subqueryDepth);
+                    var leftOp = new Operand(AsBaseToken(pc.children[0] as ParserRuleContext), pc.children[0] is Function_call_expressionContext, FunctionOverConstant(pc.children[0] as ExpressionContext), _inWhere, pc.children[0] is Case_expression_stubContext, _subqueryDepth);
                     var op = pc.children[1].GetText();
-                    var rightOp = new SqlOperand(AsBaseToken(pc.children[2] as ParserRuleContext), pc.children[2] is Function_call_expressionContext, FunctionOverConstant(pc.children[2] as ExpressionContext), _inWhere, pc.children[2] is Case_expression_stubContext, _subqueryDepth);
-                    CurrentStatement.AppendPredicate(new SqlPredicate(AsBaseToken(pc), leftOp, rightOp, op, _inWhere,FileName));
+                    var rightOp = new Operand(AsBaseToken(pc.children[2] as ParserRuleContext), pc.children[2] is Function_call_expressionContext, FunctionOverConstant(pc.children[2] as ExpressionContext), _inWhere, pc.children[2] is Case_expression_stubContext, _subqueryDepth);
+                    CurrentStatement.AppendPredicate(new Predicate(AsBaseToken(pc), leftOp, rightOp, op, _inWhere,FileName));
 
                 }
                 else if(pc.ChildCount == 5) {
                     if (pc.children[0] is Column_ref_expressionContext) {
-                        var leftOp = new SqlOperand(AsBaseToken(pc.children[0] as ParserRuleContext), false, FunctionOverConstant(pc.children[0] as ExpressionContext), _inWhere, pc.children[0] is Case_expression_stubContext, _subqueryDepth);
+                        var leftOp = new Operand(AsBaseToken(pc.children[0] as ParserRuleContext), false, FunctionOverConstant(pc.children[0] as ExpressionContext), _inWhere, pc.children[0] is Case_expression_stubContext, _subqueryDepth);
                         var op = "";
                         var sub = pc.subquery();
                         if (sub != null) {
@@ -216,7 +216,7 @@ namespace TSQLAnalyzerLib.listeners
                                     if (!allFunctionsOverConstant) { break; }
                                 }
                             }
-                            var rightOp = new SqlOperand(
+                            var rightOp = new Operand(
                                          AsBaseToken(sub),
                                          hasSubqueryFunctions,
                                          allFunctionsOverConstant,
@@ -225,7 +225,7 @@ namespace TSQLAnalyzerLib.listeners
                                          _subqueryDepth
                                      )
                                 ;
-                            CurrentStatement.AppendPredicate(new SqlPredicate(AsBaseToken(pc), leftOp, rightOp, op, _inWhere, FileName));
+                            CurrentStatement.AppendPredicate(new Predicate(AsBaseToken(pc), leftOp, rightOp, op, _inWhere, FileName));
 
                         }
                     }
@@ -323,7 +323,7 @@ namespace TSQLAnalyzerLib.listeners
                 if (parts.Length > 1) { schema = parts[plen - 2]; }
                 if (parts.Length > 2) { database = parts[plen - 3]; }
                 else { database = DB; }
-                DeclaredSqlTable? dt = DbCatalog.Seek(database, schema, tableName);
+                ResolvedTable? dt = DbCatalog.Seek(database, schema, tableName);
                 if (dt is not null) {
                     CurrentStatement.AddTable(context, dt, alias, usedAS, DbCatalog);
                 }
@@ -368,9 +368,9 @@ namespace TSQLAnalyzerLib.listeners
            var db = nameToken.database?.GetText() ?? DB;
            var schema = nameToken.schema?.GetText() ?? "dbo";
            var tableName = nameToken.table.GetText();
-           var columns = new List<DeclaredSqlColumn>();
+           var columns = new List<ResolvedColumn>();
            string? pkName = null;
-            DeclaredSqlColumn? pkCol = null;
+            ResolvedColumn? pkCol = null;
             /*
              * CREATE --> Token 0 Ignore
              * TABLE --> Token 1 Ignore
@@ -396,7 +396,7 @@ namespace TSQLAnalyzerLib.listeners
                     }
                 }         
             }
-            var table = new DeclaredSqlTable(AsBaseToken(ctx), db, schema, tableName, columns);
+            var table = new ResolvedTable(AsBaseToken(ctx), db, schema, tableName, columns);
             if (pkCol is not null) { table.SetPrimaryKey(pkCol, pkName); }
             DbCatalog.Add(table);
 
@@ -426,7 +426,7 @@ namespace TSQLAnalyzerLib.listeners
                     var constraintName = id?.GetText() ?? "[AutoGenerated]";
                     var isUnique = tableConstraint.UNIQUE() != null;
                     if (isUnique) {
-                        SqlIndex index = new(constraintName, "", isUnique, false, false);
+                        statementComponent.Index index = new(constraintName, "", isUnique, false, false);
                         var columns = tableConstraint.column_name_list_with_order().id_();
                         AddColumnsToIndex(target, index, columns);
                         target.Add(index);
@@ -467,7 +467,7 @@ namespace TSQLAnalyzerLib.listeners
             bool isUnique = context.UNIQUE() != null;
             bool isClustered = context.clustered()?.GetText().ToUpper() == "CLUSTERED";
             string where = context.search_condition()?.GetText() ?? "";
-            SqlIndex index = new(indexName, where, isUnique, isClustered, false);
+            statementComponent.Index index = new(indexName, where, isUnique, isClustered, false);
             var columns = context.column_name_list_with_order().id_();
             AddColumnsToIndex(table, index, columns);
             var includeColumns = context.column_name_list()?.id_() ?? Array.Empty<Id_Context>();
@@ -475,12 +475,12 @@ namespace TSQLAnalyzerLib.listeners
             table.Indexes.Add(index);
         }
 
-        private static void AddColumnsToIndex(DeclaredSqlTable? table, SqlIndex index, Id_Context[] columns, bool isIncluded = false) {
+        private static void AddColumnsToIndex(ResolvedTable? table, statementComponent.Index index, Id_Context[] columns, bool isIncluded = false) {
             if (table == null) return;
             foreach (var column in columns) {
                 var columnName = column.GetText().Replace("[", "").Replace("]", "");
                 if (columnName == null) { continue; }
-                DeclaredSqlColumn? col = table.Columns.Where((col) => col.ColumnName.ToLower() == columnName.ToLower()).First();
+                ResolvedColumn? col = table.Columns.Where((col) => col.ColumnName.ToLower() == columnName.ToLower()).First();
                 index.Columns.Add(col);
                 if (isIncluded) { index.IncludedColumns.Add(col); }
             }
@@ -504,7 +504,7 @@ namespace TSQLAnalyzerLib.listeners
             }
             return (false, "");
         }
-        private DeclaredSqlColumn ExtractedColumnDefinition(Column_def_table_constraintContext column) {
+        private ResolvedColumn ExtractedColumnDefinition(Column_def_table_constraintContext column) {
             var colToken = column.children[0] as Column_definitionContext;
             var constraintToken = column.children[0] as Table_constraintContext;
             if (colToken is null && constraintToken is not null) { return null; }
@@ -514,26 +514,26 @@ namespace TSQLAnalyzerLib.listeners
             var name = colToken.id_().ID().GetText();
 
 #pragma warning restore CS8602 // Dereference of a possibly null reference.
-            SqlDataType dt;
+            statementComponent.DataType dt;
             if (colToken.AS() != null) {
                 var exp = colToken.expression();
                 var attempt = ComputedColumnExpressionType(exp);
-                dt = attempt ?? new SqlDataType(AsBaseToken(exp), "UserDefined") ;
+                dt = attempt ?? new statementComponent.DataType(AsBaseToken(exp), "UserDefined") ;
             }
             else {
                 dt = Extracted_Data_Type(colToken.data_type());
             }
-            return new DeclaredSqlColumn(AsBaseToken(colToken), name, dt, nullability);
+            return new ResolvedColumn(AsBaseToken(colToken), name, dt, nullability);
         }
 
-        private SqlDataType Extracted_Data_Type(Data_typeContext dtc) {
+        private statementComponent.DataType Extracted_Data_Type(Data_typeContext dtc) {
             var parms = dtc.DECIMAL();
             var baseType = dtc.children[0].GetText();
             int? precision = null;
             int? scale = null;
             if (parms.Length > 0) precision = Int32.Parse(parms[0].GetText());
             if (parms.Length > 1) scale = Int32.Parse(parms[1].GetText());
-            return new SqlDataType(AsBaseToken(dtc), baseType, precision, scale);
+            return new statementComponent.DataType(AsBaseToken(dtc), baseType, precision, scale);
         }
 
         private bool ColumnIsNullable(Column_definition_elementContext[] cde) {
@@ -563,7 +563,7 @@ namespace TSQLAnalyzerLib.listeners
             return false;
         }
 
-        public SqlDataType? ComputedColumnExpressionType(ExpressionContext ec) {
+        public statementComponent.DataType? ComputedColumnExpressionType(ExpressionContext ec) {
             if (ec == null) { return null; }
             if(ec.children.Count == 1 && ec.children[0] is BUILT_IN_FUNCContext fun) {
                 if (fun.children[0] is CASTContext cc) {

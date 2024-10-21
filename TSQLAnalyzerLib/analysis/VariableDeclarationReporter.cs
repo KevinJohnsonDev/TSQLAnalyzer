@@ -1,22 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using TSQLAnalyzerLib.statementComponent;
 
-namespace TSQLAnalyzerLib.analysis
-{
+namespace TSQLAnalyzerLib.analysis {
     /*
      * The idea of this reporter is to report variable names that are used inconsistently
      * across various SQL Batches and Procedures
      */
     public class VariableDeclarationReporter
     {
-        public List<SqlVariable> Errors { get; init; }
+        public List<Variable> Errors { get; init; }
 
-        public VariableDeclarationReporter(IEnumerable<Environment> environments) {
+        public VariableDeclarationReporter(IEnumerable<statementComponent.Environment> environments) {
             Errors = new();
-            Dictionary<string, SqlVariable> VariableDataTypes = new();
+            Dictionary<string, Variable> VariableDataTypes = new();
             foreach(var environment in environments){
                 foreach(var variable in environment.Variables){
                     var name = variable.Name;

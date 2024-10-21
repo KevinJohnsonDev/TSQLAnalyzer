@@ -1,6 +1,7 @@
-﻿using DataType = TSQLAnalyzerLib.analysis.DataType;
+﻿using SqlDataTypes = TSQLAnalyzerLib.statementComponent.SqlDataTypes;
 
-namespace TSQLAnalyzerLibTests {
+namespace TSQLAnalyzerLibTests
+{
     [TestClass]
     public class DDLTests {
 
@@ -70,7 +71,7 @@ namespace TSQLAnalyzerLibTests {
             var table = catalog.Tables[0];
             Assert.IsTrue(table.Columns.Count == 4);
             Assert.IsTrue(table.Columns[3].ColumnName == "NewColumn");
-            Assert.IsTrue(table.Columns[3].SqlType.BaseType == DataType.CHAR);
+            Assert.IsTrue(table.Columns[3].SqlType.BaseType == SqlDataTypes.CHAR);
             Assert.IsTrue(table.Columns[3].SqlType.Precision == 1);
 
         }
@@ -104,7 +105,7 @@ namespace TSQLAnalyzerLibTests {
             var catalog = result.DbCatalog;
             var table = catalog.Tables[0];
             var dt = table.Columns[1].SqlType;
-            Assert.IsTrue(dt.BaseType == DataType.VARCHAR);
+            Assert.IsTrue(dt.BaseType == SqlDataTypes.VARCHAR);
             Assert.IsTrue(dt.Precision == 50);
         }
 
@@ -119,7 +120,7 @@ namespace TSQLAnalyzerLibTests {
             var catalog = result.DbCatalog;
             var table = catalog.Tables[0];
             var dt = table.Columns[1].SqlType;
-            Assert.IsTrue(dt.BaseType == DataType.CHAR);
+            Assert.IsTrue(dt.BaseType == SqlDataTypes.CHAR);
             Assert.IsTrue(dt.Precision == 22);
         }
         [TestMethod]
@@ -133,7 +134,7 @@ namespace TSQLAnalyzerLibTests {
             var catalog = result.DbCatalog;
             var table = catalog.Tables[0];
             var dt = table.Columns[1].SqlType;
-            Assert.IsTrue(dt.BaseType == DataType.CHAR);
+            Assert.IsTrue(dt.BaseType == SqlDataTypes.CHAR);
             Assert.IsTrue(dt.Precision == 22);
         }
 
@@ -148,7 +149,7 @@ namespace TSQLAnalyzerLibTests {
             var catalog = result.DbCatalog;
             var table = catalog.Tables[0];
             var dt = table.Columns[1].SqlType;
-            Assert.IsTrue(dt.BaseType == DataType.CHAR);
+            Assert.IsTrue(dt.BaseType == SqlDataTypes.CHAR);
             Assert.IsTrue(dt.Precision == 22);
         }
     }
