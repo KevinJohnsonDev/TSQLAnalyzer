@@ -1,6 +1,6 @@
 # TSQLAnalyzer
 
-TSQLAnalyzer is open source program to statically analyze TSQL;
+TSQLAnalyzer is an open source program to statically analyze TSQL.
 
 
 # What does this do
@@ -10,7 +10,7 @@ This projects goal is to statically analyze TSQL without *needing* for it to be 
 
 Some environments don't allow direct access to the database or have/allow local copies.
 
-You would ideally export your tables from SSMS into a file or directory and this would be used for the catalog to analyze your SQL statements
+You would ideally export your tables from SSMS into a file or directory and this would be used for the catalog to analyze your SQL statements.
 
 This is being designed to analyze queries in ways known linters don't really address such as:
 
@@ -28,7 +28,7 @@ This is being designed to analyze queries in ways known linters don't really add
 
 Currently you'd have to modify the program.cs to get real use out of this as it's really just a bundle of tools currently. 
 
-The core of these libraries is still in progress and the console program will be extended as things get closer to completion
+The core of these libraries is still in progress and the console program will be extended as things get closer to completion.
 
 - Clone the repository 
 - Run in Visual Studio 2022
@@ -51,7 +51,7 @@ Contributers are welcome!
 
 You can submit a pull request with a different branch or file a bug report.
 
-If you submit a pull request, please ensure that the current set of tests pass or it will not be merged
+If you submit a pull request, please ensure that the current set of tests pass or it will not be merged.
 
 
 
