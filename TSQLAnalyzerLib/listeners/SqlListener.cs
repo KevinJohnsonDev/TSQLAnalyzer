@@ -14,12 +14,13 @@ namespace TSQLAnalyzerLib.listeners
 {
     public class SqlListener : TSqlParserBaseListener
     {
+
+        private StatementPosition _position = new();
         public List<statementComponent.Environment> Environments { get; init; } = new List<statementComponent.Environment>();
         public Catalog DbCatalog { get; init; } = new();
         public String DB { get; set; } = "";
         public bool _inWhere = false;
         private int _caseExpressionDepth = 0;
-        private int _subqueryDepth = 0;
         public List<Statement> Statements { get; } = new List<Statement>();
         protected readonly Parser _parser;
         private Statement CurrentStatement { get; set; }
@@ -42,17 +43,20 @@ namespace TSQLAnalyzerLib.listeners
 
         public override void EnterTable_sources([Antlr4.Runtime.Misc.NotNull] Table_sourcesContext context)
         {
+            _position.WhereDepth += 1; 
             _inWhere = true;
         }
 
-        public override void EnterDml_clause([Antlr4.Runtime.Misc.NotNull] Dml_clauseContext context)
-        {
+        public override void ExitTable_sources([Antlr4.Runtime.Misc.NotNull] Table_sourcesContext context) {
+            _position.WhereDepth -= 1;
             _inWhere = true;
         }
+
 
         public override void ExitDml_clause([Antlr4.Runtime.Misc.NotNull] Dml_clauseContext context)
         {
             _inWhere = false;
+            _position.Reset();
         }
 
         public override void ExitSelect_statement_standalone([Antlr4.Runtime.Misc.NotNull] Select_statement_standaloneContext context) {
@@ -96,7 +100,7 @@ namespace TSQLAnalyzerLib.listeners
             var tokenText = context.GetText();
             var parts = tokenText.Replace("[", "").Replace("]", "").Split(".");
             if (parts.Length >= 2) {
-                CurrentStatement.AddColumn(AsBaseToken(context), parts[parts.Length - 2], parts[parts.Length - 1]);
+                CurrentStatement.AddColumn(AsBaseToken(context), parts[parts.Length - 2], parts[parts.Length - 1],(StatementPosition)_position.Clone());
             }
             base.ExitFull_column_name(context);
         }
@@ -119,13 +123,13 @@ namespace TSQLAnalyzerLib.listeners
         public override void EnterCase_expression([NN] Case_expressionContext context) => _caseExpressionDepth += 1;
         public override void ExitCase_expression([NN] Case_expressionContext context) => _caseExpressionDepth -= 1;
         public override void EnterSubquery([Antlr4.Runtime.Misc.NotNull] SubqueryContext context) {
-            _subqueryDepth += 1;
+            _position.SubqueryDepth += 1;
             CurrentStatement.EnterSubquery(AsBaseToken(context));
          }
         public override void ExitSubquery([Antlr4.Runtime.Misc.NotNull] SubqueryContext context)
         {
             CurrentStatement.Resolve(DbCatalog);
-            _subqueryDepth -= 1;
+            _position.SubqueryDepth -= 1;
             CurrentStatement.ExitSubquery(DbCatalog);
         }
 
@@ -148,15 +152,15 @@ namespace TSQLAnalyzerLib.listeners
                 var right = c.right;
                 var op = c.op.Text;
                 var rightText = right is null ? (op == "IS" ? "NULL" : "") : right.GetText();
-                var leftOp = new Operand(AsBaseToken(left), left is Function_call_expressionContext, FunctionOverConstant(left),_inWhere,_caseExpressionDepth > 0, _subqueryDepth);
-                var rightOp = new Operand(AsBaseToken(right,rightText), right is Function_call_expressionContext, FunctionOverConstant(right), _inWhere, _caseExpressionDepth > 0, _subqueryDepth);
+                var leftOp = new Operand(AsBaseToken(left), left is Function_call_expressionContext, FunctionOverConstant(left),_inWhere,_caseExpressionDepth > 0, _position.SubqueryDepth);
+                var rightOp = new Operand(AsBaseToken(right,rightText), right is Function_call_expressionContext, FunctionOverConstant(right), _inWhere, _caseExpressionDepth > 0, _position.SubqueryDepth);
                 CurrentStatement.AppendPredicate(new Predicate(AsBaseToken(c), leftOp, rightOp, op, _inWhere, FileName));
             }
             else if(child is Binary_in_expressionContext ec)
             {
                 var left = ec.left;
                 var op = ec.op.Text;
-                var leftOp = new Operand(AsBaseToken(left), left is Function_call_expressionContext, FunctionOverConstant(left), _inWhere, _caseExpressionDepth > 0, _subqueryDepth);
+                var leftOp = new Operand(AsBaseToken(left), left is Function_call_expressionContext, FunctionOverConstant(left), _inWhere, _caseExpressionDepth > 0, _position.SubqueryDepth);
                 var sub = ec.subquery();
                 var allFunctionsOverConstant = true; //Yes Not Exhaustive Check yet
                 var subqueryFunctions = FindInstancesOfParentType<Function_call_expressionContext>(sub.children);
@@ -182,7 +186,7 @@ namespace TSQLAnalyzerLib.listeners
                     allFunctionsOverConstant,
                     _inWhere,
                     _caseExpressionDepth > 0,
-                    _subqueryDepth 
+                    _position.SubqueryDepth
                 );
 
                 CurrentStatement.AppendPredicate(new Predicate(AsBaseToken(ec), leftOp, rightOp, op, _inWhere, FileName));
@@ -191,15 +195,15 @@ namespace TSQLAnalyzerLib.listeners
             }
             else if (child is PredicateContext pc) {
                 if(pc.ChildCount == 3) {
-                    var leftOp = new Operand(AsBaseToken(pc.children[0] as ParserRuleContext), pc.children[0] is Function_call_expressionContext, FunctionOverConstant(pc.children[0] as ExpressionContext), _inWhere, pc.children[0] is Case_expression_stubContext, _subqueryDepth);
+                    var leftOp = new Operand(AsBaseToken(pc.children[0] as ParserRuleContext), pc.children[0] is Function_call_expressionContext, FunctionOverConstant(pc.children[0] as ExpressionContext), _inWhere, pc.children[0] is Case_expression_stubContext, _position.SubqueryDepth);
                     var op = pc.children[1].GetText();
-                    var rightOp = new Operand(AsBaseToken(pc.children[2] as ParserRuleContext), pc.children[2] is Function_call_expressionContext, FunctionOverConstant(pc.children[2] as ExpressionContext), _inWhere, pc.children[2] is Case_expression_stubContext, _subqueryDepth);
+                    var rightOp = new Operand(AsBaseToken(pc.children[2] as ParserRuleContext), pc.children[2] is Function_call_expressionContext, FunctionOverConstant(pc.children[2] as ExpressionContext), _inWhere, pc.children[2] is Case_expression_stubContext, _position.SubqueryDepth);
                     CurrentStatement.AppendPredicate(new Predicate(AsBaseToken(pc), leftOp, rightOp, op, _inWhere,FileName));
 
                 }
                 else if(pc.ChildCount == 5) {
                     if (pc.children[0] is Column_ref_expressionContext) {
-                        var leftOp = new Operand(AsBaseToken(pc.children[0] as ParserRuleContext), false, FunctionOverConstant(pc.children[0] as ExpressionContext), _inWhere, pc.children[0] is Case_expression_stubContext, _subqueryDepth);
+                        var leftOp = new Operand(AsBaseToken(pc.children[0] as ParserRuleContext), false, FunctionOverConstant(pc.children[0] as ExpressionContext), _inWhere, pc.children[0] is Case_expression_stubContext, _position.SubqueryDepth);
                         var op = "";
                         var sub = pc.subquery();
                         if (sub != null) {
@@ -222,7 +226,7 @@ namespace TSQLAnalyzerLib.listeners
                                          allFunctionsOverConstant,
                                          _inWhere,
                                          _caseExpressionDepth > 0,
-                                         _subqueryDepth
+                                         _position.SubqueryDepth
                                      )
                                 ;
                             CurrentStatement.AppendPredicate(new Predicate(AsBaseToken(pc), leftOp, rightOp, op, _inWhere, FileName));

@@ -1,6 +1,7 @@
 ﻿namespace TSQLAnalyzerLib.statementComponent {
-    public class Column : ITokenText, IAliasable
-    {
+    public class Column : ITokenText, IAliasable {
+
+        public StatementPosition Position{get;init;}
         public string TokenText { get; init; }
         public int Start { get; init; }
         public int End { get; init; }
@@ -17,7 +18,7 @@
 
         public DataType? SqlType { get; set; }
 
-        public Column(BaseToken token, string ownerID, string columnName, DataType sqlType = null)
+        public Column(BaseToken token, string ownerID, string columnName,StatementPosition postition, DataType sqlType = null)
         {
             TokenText = token.TokenText;
             Start = token.Start;
@@ -25,6 +26,7 @@
             ColumnName = columnName;
             OwnerID = ownerID;
             SqlType = sqlType;
+            Position = postition;
         }
 
 

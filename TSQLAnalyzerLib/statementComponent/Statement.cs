@@ -149,9 +149,9 @@ namespace TSQLAnalyzerLib.statementComponent {
 
 
 
-        public void AddColumn(BaseToken token, string tableName, string columnName)
+        public void AddColumn(BaseToken token, string tableName, string columnName,StatementPosition position)
         {
-            var col = new Column(token, tableName, columnName);
+            var col = new Column(token, tableName, columnName,position);
 
             if (CurrentSubquery is not null)
             {
@@ -240,7 +240,8 @@ namespace TSQLAnalyzerLib.statementComponent {
 
         public void AddTable(Table tbl, Catalog catalog)
         {
-            ResolvedTable? dst = catalog.Seek(tbl);
+            ResolvedTable? dst = tbl.ResolvedTable is not null ? 
+                tbl.ResolvedTable : catalog.Seek(tbl);
             AppendTable(this, dst, tbl);
             AppendTable(CurrentSubquery, dst, tbl);
         }
@@ -250,7 +251,9 @@ namespace TSQLAnalyzerLib.statementComponent {
 
             if (sqlStatement is null) { return; }
             sqlStatement.Tables.Add(tbl);
-            if (dst != null) { sqlStatement.ResolvedTables.Add(tbl, dst); }
+            if (dst != null) {
+                sqlStatement.ResolvedTables.Add(tbl, dst);
+            }
             else { sqlStatement.UnresolvedTables.Add(tbl); }
         }
 

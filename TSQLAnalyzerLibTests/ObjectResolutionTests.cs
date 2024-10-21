@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using TSQLAnalyzerLib.listeners;
+using TSQLAnalyzerLib.statementComponent;
 
 namespace TSQLAnalyzerLibTests {
 
@@ -73,6 +74,19 @@ Assert.IsTrue(resolvedTables.Count == 2);
             Assert.IsTrue(entries[4].Value.Table == bTable);
 
 
+        }
+        [TestMethod]
+        public void Subquery_PositionTracked() {
+            var input = @"
+                SELECT B.ID
+                FROM (SELECT B.ID FROM dbo.B) AS C
+                JOIN (SELECT C.ID FROM dbo.C ) AS B ON B.ID = C.ID;";
+            SqlListener listener = TestMethods.Init(input);
+            var statement = listener.Statements[0];
+            Assert.IsTrue(statement.Columns.All((col) => col.Position.SubqueryDepth == 0));
+            foreach (Subquery sq in statement.Subqueries) {
+                Assert.IsTrue(sq.Columns.All((col) => col.Position.SubqueryDepth == 1));
+            }
         }
         /*
         [TestMethod]
