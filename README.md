@@ -27,10 +27,11 @@ This is being designed to analyze queries in ways known linters don't really add
 # How to use 
 
 Currently you'd have to modify the program.cs to get real use out of this as it's really just a bundle of tools currently. 
+
 The core of these libraries is still in progress and the console program will be extended as things get closer to completion
 
-    - Clone the repository 
-    - Run in Visual Studio 2022
+- Clone the repository 
+- Run in Visual Studio 2022
 
 # Planned Features
 
@@ -47,7 +48,9 @@ https://github.com/antlr/grammars-v4/blob/master/sql/tsql/TSQLAnalyzer.g4)
 # Contributing
 
 Contributers are welcome!
+
 You can submit a pull request with a different branch or file a bug report.
+
 If you submit a pull request, please ensure that the current set of tests pass or it will not be merged
 
 
