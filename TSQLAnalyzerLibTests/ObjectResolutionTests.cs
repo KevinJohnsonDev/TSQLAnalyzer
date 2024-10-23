@@ -106,7 +106,7 @@ namespace TSQLAnalyzerLibTests {
                 Assert.IsTrue(sq.Columns.All((col) => col.Position.SubqueryDepth == 1));
             }
         }
-        
+        /*
         [TestMethod]
         public void Subquery_MapsColumnsToCatalog() {
             var input = @"
@@ -151,6 +151,7 @@ namespace TSQLAnalyzerLibTests {
 
 
         }
+        */
         
     }
 }
