@@ -9,6 +9,7 @@ using System.Data;
 using static System.Formats.Asn1.AsnWriter;
 using System.Security.AccessControl;
 using TSQLAnalyzerLib.statementComponent;
+using Antlr4.Runtime.Misc;
 
 namespace TSQLAnalyzerLib.listeners
 {
@@ -57,6 +58,14 @@ namespace TSQLAnalyzerLib.listeners
         {
             _inWhere = false;
             _position.Reset();
+        }
+
+        public override void EnterSelect_statement([NotNull] Select_statementContext context) {
+            _position.SelectDepth += 1;
+        }
+
+        public override void ExitSelect_statement([NotNull] Select_statementContext context) {
+            _position.SelectDepth -= 1;
         }
 
         public override void ExitSelect_statement_standalone([Antlr4.Runtime.Misc.NotNull] Select_statement_standaloneContext context) {

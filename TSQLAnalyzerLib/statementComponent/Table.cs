@@ -11,7 +11,20 @@
         public string Schema { get; init; }
         public string TableName { get; init; }
 
-        public ResolvedTable? ResolvedTable { get; init; }
+        private List<Column> _columns = new List<Column>();
+        public virtual List<Column> Columns { get { return _columns; } }
+
+        public List<ResolvedColumn> ResolvedColumns { get; init; } = new List<ResolvedColumn>();
+
+        private ResolvedTable? _resolvedTable = null;
+        public ResolvedTable? ResolvedTable {
+            get { return _resolvedTable; }
+            set {
+                if (value == null) throw new ArgumentNullException(nameof(value));
+                if(_resolvedTable is not null) { throw new InvalidOperationException("Cannot Reassign Resolved Table"); }
+                _resolvedTable = value;
+                ResolvedColumns.AddRange(_resolvedTable.Columns);
+            } }
 
         public Table(BaseToken token, ResolvedTable dst, string alias, bool usedAs)
         {
@@ -89,9 +102,19 @@
 
     public class DerivedTable : Table {
 
+        private List<Column> _columns = new();
+        public override List<Column> Columns { get { return _columns; } }
+
+        private readonly Subquery _sub;
         public DerivedTable(BaseToken token, Subquery sub, string database, string schema, string tableName, string alias, bool usedAS) : base(token, database, schema, tableName, alias, usedAS) {
             Alias = tableName;
             UsedAs = usedAS;
+            _sub = sub;
+            if(_sub is not null){
+                _columns.
+                    AddRange(sub.Columns.Where((col) => col.Position.IsProjected).ToList());
+            }
         }
+
     }
 }

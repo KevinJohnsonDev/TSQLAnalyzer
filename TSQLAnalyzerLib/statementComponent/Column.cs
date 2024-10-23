@@ -2,6 +2,16 @@
     public class Column : ITokenText, IAliasable {
 
         public StatementPosition Position{get;init;}
+
+        private ResolvedColumn? resolvedColumn = null;
+        public ResolvedColumn? ResolvedColumn {
+            get { return resolvedColumn; }
+            set {
+                if (resolvedColumn is not null) { throw new InvalidOperationException("Cannot Reassign Resolved Table"); }
+                resolvedColumn = value ?? throw new ArgumentNullException(nameof(value));
+                Table = resolvedColumn.Table;
+            }
+        }
         public string TokenText { get; init; }
         public int Start { get; init; }
         public int End { get; init; }

@@ -4,7 +4,14 @@
         public int SubqueryDepth { get; set; } = 0;
         public int WhereDepth { get; set; } = 0;
 
+        public bool IsProjected { get { return SelectDepth > WhereDepth; } }
         public StatementPosition() { }
+
+        public StatementPosition(int selectDepth, int subqueryDepth, int whereDepth) {
+            SelectDepth = selectDepth;
+            SubqueryDepth = subqueryDepth;
+            WhereDepth = whereDepth;
+        }
 
         public void Reset() {
             SelectDepth = 0;

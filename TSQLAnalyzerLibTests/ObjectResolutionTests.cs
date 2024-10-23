@@ -30,8 +30,8 @@ namespace TSQLAnalyzerLibTests {
             SqlListener listener = TestMethods.Init(input);
             var table = listener.DbCatalog.Seek("Sample_DB", "dbo", "B");
             var statement = listener.Statements[2];
-            Assert.IsTrue(statement.ResolvedTables.Count == 1); 
-            Assert.IsTrue(statement.ResolvedColumns.Count == 3);
+            Assert.IsTrue(statement.Tables.Where((table) => table.ResolvedTable is not null).Count() == 1); 
+            Assert.IsTrue(statement.Columns.Where((col) => col.ResolvedColumn is not null).Count() == 3);
 
         }
         [TestMethod]
@@ -62,18 +62,36 @@ namespace TSQLAnalyzerLibTests {
             var bTable = listener.DbCatalog.Seek("Sample_DB", "dbo", "B");
             var cTable = listener.DbCatalog.Seek("Sample_DB", "dbo", "C");
             var statement = listener.Statements[3];
-            var resolvedTables = statement.ResolvedTables;
-            var resolvedColumns = statement.ResolvedColumns;
-            var entries = resolvedColumns.ToArray().OrderBy((kvp) => kvp.Key.Start).ToArray();
-Assert.IsTrue(resolvedTables.Count == 2);
-            Assert.IsTrue(resolvedColumns.Count == 5);
-            Assert.IsTrue(entries[0].Value.Table == cTable);
-            Assert.IsTrue(entries[1].Value.Table == bTable);
-            Assert.IsTrue(entries[2].Value.Table == bTable);
-            Assert.IsTrue(entries[3].Value.Table == cTable);
-            Assert.IsTrue(entries[4].Value.Table == bTable);
+            var resolvedTables = statement.Tables.Where((table) => table.ResolvedTable is not null).ToList();
+            var resolvedColumns =
+                statement.Columns
+                .Where(col => col.ResolvedColumn is not null)
+                .OrderBy((col) => col.Start).ToArray();
+
+            Assert.IsTrue(resolvedTables.Count == 2);
+            Assert.IsTrue(resolvedColumns.Count() == 5);
+            Assert.IsTrue(resolvedColumns[0].ResolvedColumn.Table == cTable);
+            Assert.IsTrue(resolvedColumns[1].ResolvedColumn.Table == bTable);
+            Assert.IsTrue(resolvedColumns[2].ResolvedColumn.Table == bTable);
+            Assert.IsTrue(resolvedColumns[3].ResolvedColumn.Table == cTable);
+            Assert.IsTrue(resolvedColumns[4].ResolvedColumn.Table == bTable);
 
 
+        }
+
+        [TestMethod]
+        public void Statement_PositionTracked() {
+            var input = @"
+                SELECT B.ID
+                FROM (SELECT B.ID FROM dbo.B) AS C
+                JOIN (SELECT C.ID FROM dbo.C ) AS B ON B.ID = C.ID;";
+            SqlListener listener = TestMethods.Init(input);
+            var statement = listener.Statements[0];
+            Assert.IsTrue(statement.Columns[0].Position == new StatementPosition(1,0,0));
+            Assert.IsTrue(statement.Columns[1].Position == new StatementPosition(1, 0, 1));
+            Assert.IsTrue(statement.Columns[2].Position == new StatementPosition(1, 0, 1));
+            Assert.IsTrue(statement.Subqueries[0].Columns[0].Position == new StatementPosition(2, 1, 1));
+            Assert.IsTrue(statement.Subqueries[1].Columns[0].Position == new StatementPosition(2, 1, 1));
         }
         [TestMethod]
         public void Subquery_PositionTracked() {
@@ -88,7 +106,7 @@ Assert.IsTrue(resolvedTables.Count == 2);
                 Assert.IsTrue(sq.Columns.All((col) => col.Position.SubqueryDepth == 1));
             }
         }
-        /*
+        
         [TestMethod]
         public void Subquery_MapsColumnsToCatalog() {
             var input = @"
@@ -117,19 +135,22 @@ Assert.IsTrue(resolvedTables.Count == 2);
             var bTable = listener.DbCatalog.Seek("Sample_DB", "dbo", "B");
             var cTable = listener.DbCatalog.Seek("Sample_DB", "dbo", "C");
             var statement = listener.Statements[3];
-            var resolvedTables = statement.ResolvedTables;
-            var resolvedColumns = statement.ResolvedColumns;
-            var entries = resolvedColumns.ToArray().OrderBy((kvp) => kvp.Key.Start).ToArray();
+            var resolvedTables = statement.Tables.Where((table) => table.ResolvedTable is not null).ToList();
+            var resolvedColumns = statement.Columns
+                .Where((col) => col.ResolvedColumn is not null)
+                .OrderBy((col) => col.Start)
+                .ToArray();
+;
             Assert.IsTrue(resolvedTables.Count == 2);
-            Assert.IsTrue(resolvedColumns.Count == 5);
-            Assert.IsTrue(entries[0].Value.Table == cTable);
-            Assert.IsTrue(entries[1].Value.Table == bTable);
-            Assert.IsTrue(entries[2].Value.Table == bTable);
-            Assert.IsTrue(entries[3].Value.Table == cTable);
-            Assert.IsTrue(entries[4].Value.Table == bTable);
+            Assert.IsTrue(resolvedColumns.Length == 5);
+            Assert.IsTrue(resolvedColumns[0].Table == cTable);
+            Assert.IsTrue(resolvedColumns[1].Table == bTable);
+            Assert.IsTrue(resolvedColumns[2].Table == bTable);
+            Assert.IsTrue(resolvedColumns[3].Table == cTable);
+            Assert.IsTrue(resolvedColumns[4].Table == bTable);
 
 
         }
-        */
+        
     }
 }

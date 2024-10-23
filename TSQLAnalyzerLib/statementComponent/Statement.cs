@@ -83,13 +83,6 @@ namespace TSQLAnalyzerLib.statementComponent {
 
         private readonly List<ISargable> _nonSargableTokens = new();
 
-        private readonly Dictionary<Table, ResolvedTable> resolvedSqlTables = new();
-        public Dictionary<Table, ResolvedTable> ResolvedTables { get { return resolvedSqlTables; } }
-
-        private readonly Dictionary<Column, ResolvedColumn> _resolvedSqlColumns = new();
-
-        public Dictionary<Column, ResolvedColumn> ResolvedColumns { get { return _resolvedSqlColumns; } }
-
         public List<Table> UnresolvedTables { get; } = new List<Table>();
         public List<Column> UnresolvedColumns { get; } = new List<Column>();
 
@@ -193,35 +186,34 @@ namespace TSQLAnalyzerLib.statementComponent {
                     remainingTables.Add(table);
                     continue;
                 }
-                ResolvedTables.Add(table, dst);
+                table.ResolvedTable = dst;
             }
             UnresolvedTables.Clear();
             UnresolvedTables.AddRange(remainingTables);
 
             foreach (Column col in UnresolvedColumns)
             {
-                foreach (var kvp in ResolvedTables)
+                foreach (var kvp in Tables.Where((table)=> table.ResolvedTable is not null))
                 {
-                    var dst = kvp.Value;
-                    var table = kvp.Key;
-                    ResolvedColumn? tableCol = dst.Columns.FirstOrDefault((tableCol) => tableCol.ColumnName == col.ColumnName);
+                    var resolvedTable = kvp.ResolvedTable;
+                    var table = kvp;
+                    ResolvedColumn? tableCol = resolvedTable.Columns.FirstOrDefault((tableCol) => tableCol.ColumnName == col.ColumnName);
                     if (tableCol is null) { continue; }
                     if (col.OwnerID == table.Alias)
                     {
-                        ResolvedColumns.Add(col, tableCol);
-                        col.Table = tableCol.Table;
+                        col.ResolvedColumn = tableCol;
                         continue;
                     }
                     if (col.OwnerID == table.TableName && table.Alias == "")
                     {
-                        ResolvedColumns.Add(col, tableCol);
+                        col.ResolvedColumn = tableCol;
                         continue;
                     }
                 }
 
 
             }
-            UnresolvedColumns.RemoveAll(col => ResolvedColumns.Keys.Contains(col));
+            UnresolvedColumns.RemoveAll(col => col.ResolvedColumn is not null);
         }
         public void AddTable(BaseToken token, string db, string schema, string tableName, string alias, bool usedAs, Catalog catalog) => AddTable(new Table(token, db, schema, tableName, alias, usedAs), catalog);
         public void AddTable(BaseToken token, string schema, string tableName, string alias, bool usedAs, Catalog catalog) => AddTable(new Table(token, schema, tableName, alias, usedAs), catalog);
@@ -242,6 +234,7 @@ namespace TSQLAnalyzerLib.statementComponent {
         {
             ResolvedTable? dst = tbl.ResolvedTable is not null ? 
                 tbl.ResolvedTable : catalog.Seek(tbl);
+            if(dst != null && tbl.ResolvedTable is null) { tbl.ResolvedTable = dst; }
             AppendTable(this, dst, tbl);
             AppendTable(CurrentSubquery, dst, tbl);
         }
@@ -251,10 +244,7 @@ namespace TSQLAnalyzerLib.statementComponent {
 
             if (sqlStatement is null) { return; }
             sqlStatement.Tables.Add(tbl);
-            if (dst != null) {
-                sqlStatement.ResolvedTables.Add(tbl, dst);
-            }
-            else { sqlStatement.UnresolvedTables.Add(tbl); }
+            if (dst == null) {sqlStatement.UnresolvedTables.Add(tbl);}
         }
 
 
@@ -265,6 +255,7 @@ namespace TSQLAnalyzerLib.statementComponent {
             var target = CurrentSubquery ?? this;
             target.Subqueries.Add(cur);
             PendingSubqueries.Push(cur);
+            PreviousSubquery = CurrentSubquery;
             CurrentSubquery = cur;
         }
 
