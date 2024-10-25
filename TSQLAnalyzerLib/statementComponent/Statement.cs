@@ -225,7 +225,6 @@ namespace TSQLAnalyzerLib.statementComponent {
         public void AddDerivedTable(BaseToken token, string alias, bool usedAs)
         {
             var tbl = new DerivedTable(token, PreviousSubquery, "", "", alias, alias, usedAs);
-            //if (PreviousSubquery?.parent != this) { PreviousSubquery?.parent.Tables.Add(tbl); }
             Tables.Add(tbl);
 
         }
@@ -237,7 +236,6 @@ namespace TSQLAnalyzerLib.statementComponent {
                 tbl.ResolvedTable : catalog.Seek(tbl);
             if(dst != null && tbl.ResolvedTable is null) { tbl.ResolvedTable = dst; }
             AppendTable(CurrentSubquery ?? this, dst, tbl);
-          //  AppendTable(CurrentSubquery, dst, tbl);
         }
 
         private static void AppendTable(Statement? sqlStatement, ResolvedTable? dst, Table tbl)
