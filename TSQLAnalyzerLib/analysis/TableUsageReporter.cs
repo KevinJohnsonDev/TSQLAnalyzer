@@ -19,23 +19,38 @@ namespace TSQLAnalyzerLib.analysis
          */
         public TableUsageReporter(IEnumerable<Statement> statements) {
             foreach (Statement statement in statements) {
+                TraverseSubqueries(statement);
                 foreach (var table in statement.Tables) {
-                    if (!Tables.ContainsKey(table.FQN)) {
-                        Tables.Add(table.FQN, new List<Statement>());
-                    }
-                    if (!Tables[table.FQN].Contains(statement)) {
-                        Tables[table.FQN].Add(statement);
-                    }
-                    if (table.ResolvedTable != null) { continue; }
-                    if (!Unresolved.ContainsKey(table.FQN)) { 
-                        Unresolved.Add(table.FQN, new List<Statement>());
-                        Unresolved[table.FQN].Add(statement);
-                    }
-                    if (!Unresolved[table.FQN].Contains(statement)) {
-                        Unresolved[table.FQN].Add(statement);
-                    }
-
+                    MapTable(statement, table);
                 }
+                if(statement.DmlTarget is not null) {
+                    MapTable(statement, statement.DmlTarget);
+                }
+
+            }
+        }
+
+        private void TraverseSubqueries(Statement statement) {
+            foreach(Statement sub in statement.Subqueries) {
+                   TraverseSubqueries(sub);
+                    foreach (var table in sub.Tables) {MapTable(statement, table);  }
+            }
+        }
+
+        private void MapTable(Statement statement, Table table) {
+            if (!Tables.ContainsKey(table.FQN)) {
+                Tables.Add(table.FQN, new List<Statement>());
+            }
+            if (!Tables[table.FQN].Contains(statement)) {
+                Tables[table.FQN].Add(statement);
+            }
+            if (table.ResolvedTable != null) { return; }
+            if (!Unresolved.ContainsKey(table.FQN)) {
+                Unresolved.Add(table.FQN, new List<Statement>());
+                Unresolved[table.FQN].Add(statement);
+            }
+            if (!Unresolved[table.FQN].Contains(statement)) {
+                Unresolved[table.FQN].Add(statement);
             }
         }
     }

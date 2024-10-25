@@ -68,7 +68,7 @@ namespace TSQLAnalyzerLib.statementComponent {
         public bool UsesDistinct { get; set; }
         public List<Predicate> Predicates { get; } = new List<Predicate>();
         public List<Subquery> Subqueries { get; } = new List<Subquery>();
-        public Table? UpdateTarget { get; }
+        public Table? DmlTarget { get; set; }
 
         private string? _unresolvedUpdateTarget;
 
@@ -191,13 +191,14 @@ namespace TSQLAnalyzerLib.statementComponent {
             UnresolvedTables.Clear();
             UnresolvedTables.AddRange(remainingTables);
 
-            foreach (Column col in UnresolvedColumns)
+            Statement statement = CurrentSubquery ?? this;
+            foreach (Column col in statement.UnresolvedColumns)
             {
-                foreach (var kvp in Tables.Where((table)=> table.ResolvedTable is not null))
+                foreach (var kvp in statement.Tables.Where((table)=> table.ResolvedTable is not null))
                 {
                     var resolvedTable = kvp.ResolvedTable;
                     var table = kvp;
-                    ResolvedColumn? tableCol = resolvedTable.Columns.FirstOrDefault((tableCol) => tableCol.ColumnName == col.ColumnName);
+                    ResolvedColumn? tableCol = resolvedTable?.Columns.FirstOrDefault((tableCol) => tableCol.ColumnName == col.ColumnName);
                     if (tableCol is null) { continue; }
                     if (col.OwnerID == table.Alias)
                     {
@@ -213,7 +214,7 @@ namespace TSQLAnalyzerLib.statementComponent {
 
 
             }
-            UnresolvedColumns.RemoveAll(col => col.ResolvedColumn is not null);
+            statement.UnresolvedColumns.RemoveAll(col => col.ResolvedColumn is not null);
         }
         public void AddTable(BaseToken token, string db, string schema, string tableName, string alias, bool usedAs, Catalog catalog) => AddTable(new Table(token, db, schema, tableName, alias, usedAs), catalog);
         public void AddTable(BaseToken token, string schema, string tableName, string alias, bool usedAs, Catalog catalog) => AddTable(new Table(token, schema, tableName, alias, usedAs), catalog);
@@ -224,7 +225,7 @@ namespace TSQLAnalyzerLib.statementComponent {
         public void AddDerivedTable(BaseToken token, string alias, bool usedAs)
         {
             var tbl = new DerivedTable(token, PreviousSubquery, "", "", alias, alias, usedAs);
-            if (PreviousSubquery?.parent != this) { PreviousSubquery?.parent.Tables.Add(tbl); }
+            //if (PreviousSubquery?.parent != this) { PreviousSubquery?.parent.Tables.Add(tbl); }
             Tables.Add(tbl);
 
         }
@@ -235,8 +236,8 @@ namespace TSQLAnalyzerLib.statementComponent {
             ResolvedTable? dst = tbl.ResolvedTable is not null ? 
                 tbl.ResolvedTable : catalog.Seek(tbl);
             if(dst != null && tbl.ResolvedTable is null) { tbl.ResolvedTable = dst; }
-            AppendTable(this, dst, tbl);
-            AppendTable(CurrentSubquery, dst, tbl);
+            AppendTable(CurrentSubquery ?? this, dst, tbl);
+          //  AppendTable(CurrentSubquery, dst, tbl);
         }
 
         private static void AppendTable(Statement? sqlStatement, ResolvedTable? dst, Table tbl)
@@ -251,8 +252,9 @@ namespace TSQLAnalyzerLib.statementComponent {
 
         public void EnterSubquery(BaseToken token)
         {
-            var cur = new Subquery(CurrentSubquery ?? this, token, FileName);
-            var target = CurrentSubquery ?? this;
+            Statement item = CurrentSubquery ?? this;
+            var cur = new Subquery(item ?? this, token, FileName);
+            var target = item ?? this;
             target.Subqueries.Add(cur);
             PendingSubqueries.Push(cur);
             PreviousSubquery = CurrentSubquery;
@@ -269,12 +271,6 @@ namespace TSQLAnalyzerLib.statementComponent {
             else { CurrentSubquery = null; };
         }
 
-
-
-        public void EnterDDL_Object()
-        {
-
-        }
 
 
         public override string ToString()

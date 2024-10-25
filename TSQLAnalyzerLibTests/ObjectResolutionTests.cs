@@ -107,7 +107,7 @@ namespace TSQLAnalyzerLibTests {
             }
         }
         /*
-        [TestMethod]
+        [TestMethod]       
         public void Subquery_MapsColumnsToCatalog() {
             var input = @"
                 USE Sample_DB
@@ -152,6 +152,6 @@ namespace TSQLAnalyzerLibTests {
 
         }
         */
-        
+
     }
 }

@@ -10,11 +10,45 @@ using static System.Formats.Asn1.AsnWriter;
 using System.Security.AccessControl;
 using TSQLAnalyzerLib.statementComponent;
 using Antlr4.Runtime.Misc;
+using System.Diagnostics;
 
 namespace TSQLAnalyzerLib.listeners
 {
     public class SqlListener : TSqlParserBaseListener
     {
+        private enum TableType {
+            Normal = 0,
+            Derived = 1
+        }
+        private record TableParts{
+            public readonly TableType TableType;
+            public readonly BaseToken Context;
+            public readonly string? Database;
+            public readonly string? Schema;
+            public readonly string? Name;
+            public readonly string Alias;
+            public readonly bool UsedAs;
+            public readonly ResolvedTable? ResolvedTable;
+            public TableParts(TableType TableType, BaseToken Context, string? Database, string? Schema, string? Name, string Alias, bool UsedAs, ResolvedTable? ResolvedTable) {
+                this.TableType = TableType;
+                this.Context = Context;
+                this.Database = Database;
+                this.Schema = Schema;
+                this.Name = Name;
+                this.Alias = Alias;
+                this.UsedAs = UsedAs;
+                this.ResolvedTable = ResolvedTable;
+                if(TableType == TableType.Normal) {
+                    if(Database is null) { throw new ArgumentNullException(nameof(Database), "Database cannot be null for normal table"); }
+                    if(Schema is null) { throw new ArgumentNullException(nameof(Schema), "Schema cannot be null for normal table"); }
+                    if(Name is null) { throw new ArgumentNullException(nameof(Name), "Name cannot be null for normal table"); }
+                }
+                else if(TableType == TableType.Derived) {
+                    if (Alias is null) { throw new ArgumentNullException(nameof(Alias), "Alias cannot be null for Derived table"); }
+
+                }
+            }
+        }
 
         private StatementPosition _position = new();
         public List<statementComponent.Environment> Environments { get; init; } = new List<statementComponent.Environment>();
@@ -75,7 +109,16 @@ namespace TSQLAnalyzerLib.listeners
             CurrentStatement = new Statement(AsBaseToken(context),FileName);
             Ddl_objectContext ddlObj = context.ddl_object();
             Full_table_nameContext tableName = ddlObj.full_table_name();
-            ExtractAndAddTableItem(AsBaseToken(context), tableName,null, null);
+            TableParts? tp = ExtractAndAddTableItem(AsBaseToken(context), tableName,null, null);
+            Debug.Assert(tp is not null);
+            if (tp.ResolvedTable != null) {
+                CurrentStatement.DmlTarget = new Table(tp.Context, tp.ResolvedTable, tp.Alias, tp.UsedAs);
+            }
+            else {
+                CurrentStatement.DmlTarget = new Table(tp.Context,tp.Database,tp.Schema,tp.Name,tp.Alias,tp.UsedAs);
+
+            }
+
         }
 
 
@@ -315,11 +358,23 @@ namespace TSQLAnalyzerLib.listeners
 
 
         public override void ExitTable_source_item([Antlr4.Runtime.Misc.NotNull] Table_source_itemContext context) {
-            ExtractAndAddTableItem(AsBaseToken(context),context.full_table_name(),context.derived_table(),context.as_table_alias());
+            TableParts? tp = ExtractAndAddTableItem(AsBaseToken(context),context.full_table_name(),context.derived_table(),context.as_table_alias());
+            Debug.Assert (tp != null);
+            switch(tp.TableType){
+                case TableType.Normal:
+#pragma warning disable CS8604 // Possible null reference argument.
+                    CurrentStatement.AddTable(tp.Context, tp.Database, tp.Schema, tp.Name, tp.Alias, tp.UsedAs, DbCatalog);
+#pragma warning restore CS8604 // Possible null reference argument.
+                    break;
+                case TableType.Derived:
+                    CurrentStatement.AddDerivedTable(tp.Context, tp.Alias, tp.UsedAs);
+                    break;
 
+            }
+            
         }
 
-        private void ExtractAndAddTableItem(BaseToken context,Full_table_nameContext? ftn,Derived_tableContext? derived,As_table_aliasContext? ata) {
+        private TableParts? ExtractAndAddTableItem(BaseToken context,Full_table_nameContext? ftn,Derived_tableContext? derived,As_table_aliasContext? ata) {
             var table = "";
             var schema = "dbo";
             var database = "";
@@ -337,21 +392,13 @@ namespace TSQLAnalyzerLib.listeners
                 if (parts.Length > 2) { database = parts[plen - 3]; }
                 else { database = DB; }
                 ResolvedTable? dt = DbCatalog.Seek(database, schema, tableName);
-                if (dt is not null) {
-                    CurrentStatement.AddTable(context, dt, alias, usedAS, DbCatalog);
-                }
-                else {
-                    CurrentStatement.AddTable(context, database, schema, tableName, alias, usedAS ,DbCatalog);
-                }
+                return new TableParts(TableType.Normal,context, database, schema, tableName, alias, usedAS, dt); ;
             }
-            else if(derived is not null) {
-                CurrentStatement.AddDerivedTable(context, alias, usedAS);
+            if(derived is not null) {
+                return new TableParts(TableType.Derived, context, database, schema, table, alias, usedAS, null);
+                //
             }
-
-
-
-
-
+            return null;
         }
 
         public override void EnterDeclare_statement([Antlr4.Runtime.Misc.NotNull] Declare_statementContext context)
