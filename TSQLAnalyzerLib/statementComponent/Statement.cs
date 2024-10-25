@@ -194,11 +194,11 @@ namespace TSQLAnalyzerLib.statementComponent {
             Statement statement = CurrentSubquery ?? this;
             foreach (Column col in statement.UnresolvedColumns)
             {
-                foreach (var kvp in statement.Tables.Where((table)=> table.ResolvedTable is not null))
+                foreach (var kvp in statement.Tables.Where((table)=> table.Columns is not null))
                 {
                     var resolvedTable = kvp.ResolvedTable;
                     var table = kvp;
-                    ResolvedColumn? tableCol = resolvedTable?.Columns.FirstOrDefault((tableCol) => tableCol.ColumnName == col.ColumnName);
+                    ResolvedColumn? tableCol = table?.Columns.FirstOrDefault((tableCol) => tableCol.ColumnName == col.ColumnName)?.ResolvedColumn;
                     if (tableCol is null) { continue; }
                     if (col.OwnerID == table.Alias)
                     {

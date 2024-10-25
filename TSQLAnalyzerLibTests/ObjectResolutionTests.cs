@@ -106,7 +106,7 @@ namespace TSQLAnalyzerLibTests {
                 Assert.IsTrue(sq.Columns.All((col) => col.Position.SubqueryDepth == 1));
             }
         }
-        /*
+        
         [TestMethod]       
         public void Subquery_MapsColumnsToCatalog() {
             var input = @"
@@ -135,7 +135,7 @@ namespace TSQLAnalyzerLibTests {
             var bTable = listener.DbCatalog.Seek("Sample_DB", "dbo", "B");
             var cTable = listener.DbCatalog.Seek("Sample_DB", "dbo", "C");
             var statement = listener.Statements[3];
-            var resolvedTables = statement.Tables.Where((table) => table.ResolvedTable is not null).ToList();
+            var resolvedTables = statement.Tables.Where((table) =>  table.Columns.Count > 0).ToList();
             var resolvedColumns = statement.Columns
                 .Where((col) => col.ResolvedColumn is not null)
                 .OrderBy((col) => col.Start)
@@ -144,14 +144,14 @@ namespace TSQLAnalyzerLibTests {
             Assert.IsTrue(resolvedTables.Count == 2);
             Assert.IsTrue(resolvedColumns.Length == 5);
             Assert.IsTrue(resolvedColumns[0].Table == cTable);
-            Assert.IsTrue(resolvedColumns[1].Table == bTable);
-            Assert.IsTrue(resolvedColumns[2].Table == bTable);
+            Assert.IsTrue(resolvedColumns[1].Table == cTable);
+            Assert.IsTrue(resolvedColumns[2].Table == cTable);
             Assert.IsTrue(resolvedColumns[3].Table == cTable);
             Assert.IsTrue(resolvedColumns[4].Table == bTable);
 
 
         }
-        */
+        
 
     }
 }

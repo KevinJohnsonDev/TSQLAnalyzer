@@ -23,7 +23,7 @@
                 if (value == null) throw new ArgumentNullException(nameof(value));
                 if(_resolvedTable is not null) { throw new InvalidOperationException("Cannot Reassign Resolved Table"); }
                 _resolvedTable = value;
-                ResolvedColumns.AddRange(_resolvedTable.Columns);
+                Columns.AddRange(_resolvedTable.Columns.Select((x)=> x.AsColumn()));
             } }
 
         public Table(BaseToken token, ResolvedTable dst, string alias, bool usedAs)

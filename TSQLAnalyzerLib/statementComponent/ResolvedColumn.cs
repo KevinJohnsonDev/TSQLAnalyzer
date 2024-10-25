@@ -25,5 +25,11 @@
         {
             return new ResolvedColumn(BaseToken.OnlineToken, columnName, sqlType, isNullable);
         }
+
+        public Column AsColumn() {
+            return new Column(BaseToken.OnlineToken, Table.TableName, ColumnName, new StatementPosition()) {
+                ResolvedColumn = this
+            };
+        }
     }
 }
