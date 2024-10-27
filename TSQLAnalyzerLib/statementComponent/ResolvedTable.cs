@@ -46,6 +46,10 @@
             Columns.Add(col);
             col.Table = this;
         }
+
+        public void Add(IEnumerable<ResolvedColumn> columns) {
+            foreach (var col in columns) { Add(col); }
+        }
         public void Alter(ResolvedColumn col)
         {
 

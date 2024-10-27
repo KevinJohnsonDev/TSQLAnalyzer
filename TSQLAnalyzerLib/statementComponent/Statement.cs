@@ -225,7 +225,8 @@ namespace TSQLAnalyzerLib.statementComponent {
         public void AddDerivedTable(BaseToken token, string alias, bool usedAs)
         {
             var tbl = new DerivedTable(token, PreviousSubquery, "", "", alias, alias, usedAs);
-            Tables.Add(tbl);
+            var statement = CurrentSubquery ?? this;
+            statement.Tables.Add(tbl);
 
         }
 

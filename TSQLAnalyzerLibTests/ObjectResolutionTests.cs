@@ -14,22 +14,12 @@ namespace TSQLAnalyzerLibTests {
         public void Simple_Statement_MapsColumnsToCatalog() {
             var input = @"
                 USE Sample_DB
-
                 GO
-
-                CREATE TABLE dbo.B(
-                    ID INT CONSTRAINT PK_dbo_B_ID PRIMARY KEY,
-                    ActionBy VARCHAR(25) NOT NULL,
-                    ActionDate DATETIME NULL
-                )
-
-                GO
-
                 SELECT B.ID,B.ActionBy,B.ActionDate FROM dbo.B;";
 
-            SqlListener listener = TestMethods.Init(input);
+            SqlListener listener = TestMethods.Init(input, MockTables());
             var table = listener.DbCatalog.Seek("Sample_DB", "dbo", "B");
-            var statement = listener.Statements[2];
+            var statement = listener.Statements[1];
             Assert.IsTrue(statement.Tables.Where((table) => table.ResolvedTable is not null).Count() == 1); 
             Assert.IsTrue(statement.Columns.Where((col) => col.ResolvedColumn is not null).Count() == 3);
 
@@ -38,30 +28,15 @@ namespace TSQLAnalyzerLibTests {
         public void AliasEachOther_MapsColumnsToCatalog() {
             var input = @"
                 USE Sample_DB
-
                 GO
-
-                CREATE TABLE dbo.B(
-                    ID INT CONSTRAINT PK_dbo_B_ID PRIMARY KEY,
-                    ActionBy VARCHAR(25) NOT NULL,
-                    ActionDate DATETIME NULL
-                )
-                CREATE TABLE dbo.C(
-                    ID INT CONSTRAINT PK_dbo_C_ID PRIMARY KEY,
-                    ActionBy VARCHAR(25) NOT NULL,
-                    ActionDate DATETIME NULL
-                )
-
-                GO
-
                 SELECT B.ID,C.ActionBy,C.ActionDate 
                 FROM dbo.B AS C
                 JOIN dbo.C AS B ON B.ID = C.ID;";
 
-            SqlListener listener = TestMethods.Init(input);
+            SqlListener listener = TestMethods.Init(input, MockTables());
             var bTable = listener.DbCatalog.Seek("Sample_DB", "dbo", "B");
             var cTable = listener.DbCatalog.Seek("Sample_DB", "dbo", "C");
-            var statement = listener.Statements[3];
+            var statement = listener.Statements[1];
             var resolvedTables = statement.Tables.Where((table) => table.ResolvedTable is not null).ToList();
             var resolvedColumns =
                 statement.Columns
@@ -114,27 +89,14 @@ namespace TSQLAnalyzerLibTests {
 
                 GO
 
-                CREATE TABLE dbo.B(
-                    ID INT CONSTRAINT PK_dbo_B_ID PRIMARY KEY,
-                    ActionBy VARCHAR(25) NOT NULL,
-                    ActionDate DATETIME NULL
-                )
-                CREATE TABLE dbo.C(
-                    ID INT CONSTRAINT PK_dbo_C_ID PRIMARY KEY,
-                    ActionBy VARCHAR(25) NOT NULL,
-                    ActionDate DATETIME NULL
-                )
-
-                GO
-
                 SELECT B.ID,B.ActionBy,B.ActionDate 
                 FROM (SELECT B.ID FROM dbo.B) AS C
                 JOIN (SELECT C.ID,C.ActionBy,C.ActionDate FROM dbo.C ) AS B ON B.ID = C.ID;";
 
-            SqlListener listener = TestMethods.Init(input);
+            SqlListener listener = TestMethods.Init(input,MockTables());
             var bTable = listener.DbCatalog.Seek("Sample_DB", "dbo", "B");
             var cTable = listener.DbCatalog.Seek("Sample_DB", "dbo", "C");
-            var statement = listener.Statements[3];
+            var statement = listener.Statements[1];
             var resolvedTables = statement.Tables.Where((table) =>  table.Columns.Count > 0).ToList();
             var resolvedColumns = statement.Columns
                 .Where((col) => col.ResolvedColumn is not null)
@@ -151,7 +113,96 @@ namespace TSQLAnalyzerLibTests {
 
 
         }
-        
+        [TestMethod]
+        public void Subquery_MapsMultipleSubqueriesDeepColumnsToCatalog() {
+            var input = @"
+                USE Sample_DB
+
+                GO
+
+                SELECT C.ID,C.ActionBy,C.ActionDate,B.ID
+                FROM (
+                    SELECT C.ID,C.ActionBy,C.ActionDate
+                    FROM (
+                        SELECT B.ID,B.ActionBy,B.ActionDate
+                        FROM dbo.B
+                    ) AS C
+                 ) AS C
+                JOIN (
+                    SELECT B.ID,B.ActionBy,B.ActionDate
+                    FROM (
+                       SELECT C.ID,C.ActionBy,C.ActionDate
+                       FROM dbo.C 
+                    ) AS B 
+                ) AS B ON B.ID = C.ID;";
+
+            SqlListener listener = TestMethods.Init(input, MockTables());
+            var bTable = listener.DbCatalog.Seek("Sample_DB", "dbo", "B");
+            var cTable = listener.DbCatalog.Seek("Sample_DB", "dbo", "C");
+            var statement = listener.Statements[1];
+            var resolvedTables = statement.Tables.Where((table) => table.Columns.Count > 0).ToList();
+            var resolvedColumns = statement.Columns
+                .Where((col) => col.ResolvedColumn is not null)
+                .OrderBy((col) => col.Start)
+                .ToArray();
+            ;
+            Assert.IsTrue(resolvedTables.Count == 2);
+
+            Assert.IsTrue(resolvedColumns.Length == 6);
+            for(int i = 0; i < 3; i += 1) {
+                Assert.IsTrue(resolvedColumns[i].Table == bTable);
+            }
+            Assert.IsTrue(resolvedColumns[3].Table == cTable);
+            Assert.IsTrue(resolvedColumns[4].Table == cTable);
+            Assert.IsTrue(resolvedColumns[5].Table == bTable);
+            Assert.IsNotNull(bTable);
+            Assert.IsNotNull(cTable);
+            CheckSub(statement, 0, bTable);
+            CheckSub(statement, 1, cTable);
+
+        }
+
+        static void CheckSub(Statement statement, int idx, ResolvedTable expected) {
+
+            var resolvedInnerColumns = statement.Subqueries[idx].Columns
+                .Where((col) => col.ResolvedColumn is not null)
+                .OrderBy((col) => col.Start)
+                .ToArray();
+
+            Assert.IsTrue(resolvedInnerColumns.Length == 3);
+            Assert.IsTrue(resolvedInnerColumns.All(col => col.Table == expected));
+
+            var deepInnerColumns = statement.Subqueries[idx].Subqueries[0].Columns
+                .Where((col) => col.ResolvedColumn is not null)
+                .OrderBy((col) => col.Start)
+                .ToArray();
+
+            Assert.IsTrue(deepInnerColumns.Length == 3);
+            Assert.IsTrue(deepInnerColumns.All(col => col.Table == expected));
+        }
+
+        static List<ResolvedTable> MockTables() {
+            var bTable = new ResolvedTable(BaseToken.OnlineToken, "Sample_DB", "dbo", "B");
+            List<ResolvedColumn> bColumns = new(){
+                new ResolvedColumn(BaseToken.OnlineToken,"ID",new DataType(BaseToken.OnlineToken,"INT",null,null),false),
+                new ResolvedColumn(BaseToken.OnlineToken,"ActionBy",new DataType(BaseToken.OnlineToken,"VARCHAR",25,null),false),
+                new ResolvedColumn(BaseToken.OnlineToken,"ActionDate",new DataType(BaseToken.OnlineToken,"DATETIME",null),true)
+
+             };
+            bTable.Add(bColumns);
+
+            var cTable = new ResolvedTable(BaseToken.OnlineToken, "Sample_DB", "dbo", "C");
+            List<ResolvedColumn> cColumns = new(){
+                new ResolvedColumn(BaseToken.OnlineToken,"ID",new DataType(BaseToken.OnlineToken,"INT",null,null),false),
+                new ResolvedColumn(BaseToken.OnlineToken,"ActionBy",new DataType(BaseToken.OnlineToken,"VARCHAR",25,null),false),
+                new ResolvedColumn(BaseToken.OnlineToken,"ActionDate",new DataType(BaseToken.OnlineToken,"DATETIME",null),true)
+
+             };
+            cTable.Add(cColumns);
+            return new List<ResolvedTable>() { bTable, cTable };
+
+
+        }
 
     }
 }
