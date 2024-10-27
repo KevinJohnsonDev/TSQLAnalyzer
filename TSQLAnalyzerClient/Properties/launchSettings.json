@@ -2,7 +2,7 @@
   "profiles": {
     "TSQLAnalyzerClient": {
       "commandName": "Project",
-      "commandLineArgs": "--con \"Server=DESKTOP-ACBGFT1\\SQLEXPRESS;Database=master;Trusted_Connection=True;TrustServerCertificate=True;\" --directory \"..\\..\\..\\Examples\""
+      "commandLineArgs": "--con \"Server=YOUR_SERVER_NAME\\SQLEXPRESS;Database=master;Trusted_Connection=True;TrustServerCertificate=True;\" --directory \"..\\..\\..\\Examples\""
     }
   }
 }
