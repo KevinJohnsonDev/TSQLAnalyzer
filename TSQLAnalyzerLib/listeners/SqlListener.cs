@@ -22,29 +22,22 @@ namespace TSQLAnalyzerLib.listeners
         }
         private record TableParts{
             public readonly TableType TableType;
+
             public readonly BaseToken Context;
-            public readonly string? Database;
-            public readonly string? Schema;
-            public readonly string? Name;
-            public readonly string Alias;
-            public readonly bool UsedAs;
             public readonly ResolvedTable? ResolvedTable;
-            public TableParts(TableType TableType, BaseToken Context, string? Database, string? Schema, string? Name, string Alias, bool UsedAs, ResolvedTable? ResolvedTable) {
+            public readonly Identifier Id;
+            public TableParts(TableType TableType, BaseToken Context, Identifier id, ResolvedTable? ResolvedTable) {
+                this.Id = id;
                 this.TableType = TableType;
                 this.Context = Context;
-                this.Database = Database;
-                this.Schema = Schema;
-                this.Name = Name;
-                this.Alias = Alias;
-                this.UsedAs = UsedAs;
                 this.ResolvedTable = ResolvedTable;
                 if(TableType == TableType.Normal) {
-                    if(Database is null) { throw new ArgumentNullException(nameof(Database), "Database cannot be null for normal table"); }
-                    if(Schema is null) { throw new ArgumentNullException(nameof(Schema), "Schema cannot be null for normal table"); }
-                    if(Name is null) { throw new ArgumentNullException(nameof(Name), "Name cannot be null for normal table"); }
+                    if(id.Database is null) { throw new ArgumentException("Database cannot be null for normal table", nameof(id)); }
+                    if(id.Schema is null) { throw new ArgumentNullException(nameof(id), "Schema cannot be null for normal table"); }
+                    if(id.Name is null) { throw new ArgumentNullException(nameof(id), "Name cannot be null for normal table"); }
                 }
-                else if(TableType == TableType.Derived) {
-                    if (Alias is null) { throw new ArgumentNullException(nameof(Alias), "Alias cannot be null for Derived table"); }
+                else if (TableType == TableType.Derived) {
+                    if (id.Alias is null) { throw new ArgumentNullException(nameof(id), "Alias cannot be null for Derived table"); }
 
                 }
             }
@@ -112,10 +105,10 @@ namespace TSQLAnalyzerLib.listeners
             TableParts? tp = ExtractAndAddTableItem(AsBaseToken(context), tableName,null, null);
             Debug.Assert(tp is not null);
             if (tp.ResolvedTable != null) {
-                CurrentStatement.DmlTarget = new Table(tp.Context, tp.ResolvedTable, tp.Alias, tp.UsedAs);
+                CurrentStatement.DmlTarget = new Table(tp.Context, tp.ResolvedTable, tp.Id);
             }
             else {
-                CurrentStatement.DmlTarget = new Table(tp.Context,tp.Database,tp.Schema,tp.Name,tp.Alias,tp.UsedAs);
+                CurrentStatement.DmlTarget = new Table(tp.Context, tp.Id);
 
             }
 
@@ -162,13 +155,8 @@ namespace TSQLAnalyzerLib.listeners
             if (context.expression_elem() is not null) {
                 var asAlias = context.expression_elem().as_column_alias();
                 var alias = context.expression_elem().column_alias();
-                if (asAlias != null) {
-                    CurrentStatement.AppendAlias(asAlias.column_alias().GetFullText());
-                }
-                else if(alias != null) {
-                    CurrentStatement.AppendAlias(alias.GetFullText());
-
-                }
+                string? aliasName =  asAlias?.column_alias().GetFullText() ?? alias?.GetFullText();
+                if (aliasName != null) { CurrentStatement.AppendAlias(aliasName); }
             }
         }
 
@@ -363,11 +351,11 @@ namespace TSQLAnalyzerLib.listeners
             switch(tp.TableType){
                 case TableType.Normal:
 #pragma warning disable CS8604 // Possible null reference argument.
-                    CurrentStatement.AddTable(tp.Context, tp.Database, tp.Schema, tp.Name, tp.Alias, tp.UsedAs, DbCatalog);
+                    CurrentStatement.AddTable(tp.Context, tp.Id, DbCatalog);
 #pragma warning restore CS8604 // Possible null reference argument.
                     break;
                 case TableType.Derived:
-                    CurrentStatement.AddDerivedTable(tp.Context, tp.Alias, tp.UsedAs);
+                    CurrentStatement.AddDerivedTable(tp.Context, tp.Id);
                     break;
 
             }
@@ -375,28 +363,29 @@ namespace TSQLAnalyzerLib.listeners
         }
 
         private TableParts? ExtractAndAddTableItem(BaseToken context,Full_table_nameContext? ftn,Derived_tableContext? derived,As_table_aliasContext? ata) {
-            var table = "";
-            var schema = "dbo";
-            var database = "";
+            string schema = "dbo";
             string alias = ata?.GetText() ?? "";
-            var usedAS = alias.Length > 2 && alias.Substring(0, 2) == "AS";
-            if (usedAS) { alias = alias.Substring(2); }
+            bool usedAS = alias.Length > 2 && alias[..2] == "AS";
+            if (usedAS) { alias = alias[2..]; }
 
             if (ftn is not null) {
-                table = ftn.GetFullText();
+                var table = ftn.GetFullText();
 
                 var parts = table.Split(".");
                 var plen = parts.Length;
                 var tableName = parts[plen - 1];
                 if (parts.Length > 1) { schema = parts[plen - 2]; }
+                var database = "";
                 if (parts.Length > 2) { database = parts[plen - 3]; }
                 else { database = DB; }
+                Identifier id = new(alias, usedAS, tableName, schema, database);
                 ResolvedTable? dt = DbCatalog.Seek(database, schema, tableName);
-                return new TableParts(TableType.Normal,context, database, schema, tableName, alias, usedAS, dt); ;
+
+                return new TableParts(TableType.Normal,context, id,dt);
             }
             if(derived is not null) {
-                return new TableParts(TableType.Derived, context, database, schema, table, alias, usedAS, null);
-                //
+                Identifier id = new(alias, usedAS);
+                return new TableParts(TableType.Derived, context, id,null);
             }
             return null;
         }

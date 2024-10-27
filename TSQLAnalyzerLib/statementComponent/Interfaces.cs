@@ -7,9 +7,9 @@ using System.Threading.Tasks;
 namespace TSQLAnalyzerLib.statementComponent {
 
     public interface ITokenText {
-        string TokenText { get; init; }
-        int Start { get; init; }
-        int End { get; init; }
+        string TokenText { get; }
+        int Start { get;  }
+        int End { get; }
     }
     public interface ISargable : ITokenText {
         bool IsSargable();

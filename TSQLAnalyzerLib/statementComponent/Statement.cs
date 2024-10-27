@@ -216,15 +216,13 @@ namespace TSQLAnalyzerLib.statementComponent {
             }
             statement.UnresolvedColumns.RemoveAll(col => col.ResolvedColumn is not null);
         }
-        public void AddTable(BaseToken token, string db, string schema, string tableName, string alias, bool usedAs, Catalog catalog) => AddTable(new Table(token, db, schema, tableName, alias, usedAs), catalog);
-        public void AddTable(BaseToken token, string schema, string tableName, string alias, bool usedAs, Catalog catalog) => AddTable(new Table(token, schema, tableName, alias, usedAs), catalog);
-        public void AddTable(BaseToken token, string tableName, string alias, bool usedAs, Catalog catalog) => AddTable(new Table(token, "dbo", tableName, alias, usedAs), catalog);
+        public void AddTable(BaseToken token, Identifier id, Catalog catalog) => AddTable(new Table(token, id), catalog);
 
-        public void AddTable(BaseToken token, ResolvedTable dst, string alias, bool usedAs, Catalog catalog) => AddTable(new Table(token, dst, alias, usedAs), catalog);
+        public void AddTable(BaseToken token, ResolvedTable dst, Identifier id, Catalog catalog) => AddTable(new Table(token, dst, id), catalog);
 
-        public void AddDerivedTable(BaseToken token, string alias, bool usedAs)
+        public void AddDerivedTable(BaseToken token, Identifier id)
         {
-            var tbl = new DerivedTable(token, PreviousSubquery, "", "", alias, alias, usedAs);
+            var tbl = new DerivedTable(token, PreviousSubquery, id);
             var statement = CurrentSubquery ?? this;
             statement.Tables.Add(tbl);
 

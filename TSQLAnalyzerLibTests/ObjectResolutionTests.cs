@@ -161,24 +161,51 @@ namespace TSQLAnalyzerLibTests {
             CheckSub(statement, 1, cTable);
 
         }
+        /*
+        [TestMethod]
+        public void CTE_MapsToCatalog() {
+            var input = @"
+                USE Sample_DB
+
+                GO
+                ;WITH CTE AS(
+                    SELECT B.ID
+                    FROM dbo.B
+                )
+                SELECT CTE.ID FROM CTE;
+            ";
+            SqlListener listener = TestMethods.Init(input, MockTables());
+            var bTable = listener.DbCatalog.Seek("Sample_DB", "dbo", "B");
+            var statement = listener.Statements[1];
+            var resolvedTables = statement.Tables.Where((table) => table.Columns.Count > 0).ToList();
+            var resolvedColumns = statement.Columns
+                .Where((col) => col.ResolvedColumn is not null)
+                .OrderBy((col) => col.Start)
+                .ToArray();
+            Assert.IsTrue(resolvedTables.Count == 1);
+
+        }
+        */
+
+
 
         static void CheckSub(Statement statement, int idx, ResolvedTable expected) {
 
-            var resolvedInnerColumns = statement.Subqueries[idx].Columns
-                .Where((col) => col.ResolvedColumn is not null)
-                .OrderBy((col) => col.Start)
-                .ToArray();
+        var resolvedInnerColumns = statement.Subqueries[idx].Columns
+            .Where((col) => col.ResolvedColumn is not null)
+            .OrderBy((col) => col.Start)
+            .ToArray();
 
-            Assert.IsTrue(resolvedInnerColumns.Length == 3);
-            Assert.IsTrue(resolvedInnerColumns.All(col => col.Table == expected));
+        Assert.IsTrue(resolvedInnerColumns.Length == 3);
+        Assert.IsTrue(resolvedInnerColumns.All(col => col.Table == expected));
 
-            var deepInnerColumns = statement.Subqueries[idx].Subqueries[0].Columns
-                .Where((col) => col.ResolvedColumn is not null)
-                .OrderBy((col) => col.Start)
-                .ToArray();
+        var deepInnerColumns = statement.Subqueries[idx].Subqueries[0].Columns
+            .Where((col) => col.ResolvedColumn is not null)
+            .OrderBy((col) => col.Start)
+            .ToArray();
 
-            Assert.IsTrue(deepInnerColumns.Length == 3);
-            Assert.IsTrue(deepInnerColumns.All(col => col.Table == expected));
+        Assert.IsTrue(deepInnerColumns.Length == 3);
+        Assert.IsTrue(deepInnerColumns.All(col => col.Table == expected));
         }
 
         static List<ResolvedTable> MockTables() {

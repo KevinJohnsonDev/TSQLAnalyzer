@@ -1,15 +1,20 @@
-﻿namespace TSQLAnalyzerLib.statementComponent {
+﻿using Antlr4.Runtime;
+
+namespace TSQLAnalyzerLib.statementComponent {
     public class Table : ITokenText, IAliasable, IEquatable<Table?>
     {
+        public BaseToken Token { get; init; }
+        public Identifier Id { get; init; }
         public string Alias { get; set; } = "";
-        public string TokenText { get; init; }
-        public int Start { get; init; }
-        public string FQN { get; init; }
-        public int End { get; init; }
-        public bool UsedAs { get; set; }
-        public string Database { get; init; }
-        public string Schema { get; init; }
-        public string TableName { get; init; }
+        public string TokenText => Token.TokenText;
+        public int Start => Token.Start; 
+        public string FQN => Id.FQN;
+        public int End => Token.End;
+ 
+        public bool UsedAs { get { return Id.UsedAs; } set {} }
+        public string Database => Id.Database;
+        public string Schema => Id.Schema;
+        public string TableName => Id.Name;
 
         private List<Column> _columns = new List<Column>();
         public virtual List<Column> Columns { get { return _columns; } }
@@ -26,47 +31,22 @@
                 Columns.AddRange(_resolvedTable.Columns.Select((x)=> x.AsColumn()));
             } }
 
-        public Table(BaseToken token, ResolvedTable dst, string alias, bool usedAs)
-        {
-            Database = dst.Database;
-            Schema = dst.Schema;
-            TableName = dst.TableName;
-            Start = token.Start;
-            End = token.End;
-            TokenText = token.TokenText;
-            var prefix = string.IsNullOrWhiteSpace(Database) ? "" : $"{Database}.";
-            FQN = $"{prefix}{Schema}.{TableName}";
+        public Table(BaseToken token, ResolvedTable dst, Identifier id)
+    {
+            Token = token;
+            Id = id;
+            Alias = id.Alias;
             ResolvedTable = dst;
-            Alias = alias;
-            UsedAs = usedAs;
         }
 
-        public Table(BaseToken token, string database, string schema, string tableName, string alias, bool usedAs)
+        public Table(BaseToken token, Identifier id)
         {
-            Database = database;
-            Schema = schema;
-            TableName = tableName;
-            TokenText = token.TokenText;
-            Start = token.Start;
-            End = token.End;
-            var prefix = string.IsNullOrWhiteSpace(Database) ? "" : $"{Database}.";
-            FQN = $"{prefix}{Schema}.{TableName}";
-            Alias = alias;
-            UsedAs = usedAs;
+            Token = token;
+            Id = id;
+            Alias = id.Alias;
+
         }
 
-        public Table(BaseToken token, string schema, string tableName, string alias, bool usedAs)
-        {
-            Database = "";
-            Schema = schema;
-            TableName = tableName;
-            TokenText = token.TokenText;
-            Start = token.Start;
-            End = token.End;
-            FQN = $"{Schema}.{TableName}";
-            Alias = alias;
-            UsedAs = usedAs;
-        }
 
         public override string ToString() => $"{TokenText}:{Start}-{End}\n\tDatabase:{Database}\n\tSchema:{Schema}\n\tTableName:{TableName}\n\tAlias:{Alias}\n\tUsedAs:{UsedAs}";
 
@@ -106,9 +86,9 @@
         public override List<Column> Columns { get { return _columns; } }
 
         private readonly Subquery _sub;
-        public DerivedTable(BaseToken token, Subquery sub, string database, string schema, string tableName, string alias, bool usedAS) : base(token, database, schema, tableName, alias, usedAS) {
-            Alias = tableName;
-            UsedAs = usedAS;
+        public DerivedTable(BaseToken token, Subquery sub, Identifier id):base(token,id) {
+            Alias = id.Alias;
+            UsedAs = id.UsedAs;
             _sub = sub;
             if(_sub is not null){
                 _columns.
