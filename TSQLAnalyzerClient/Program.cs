@@ -21,7 +21,11 @@ try {
         dbCatalog = new(argumentOption.ConnectionString);
         dbCatalog.PopulateCatalog();
     }
+#if DEBUG
     TokenLoggingSqlListener? listener = null;
+#else
+    SqlListener? listener = null;
+#endif 
     bool populated = false;
     foreach (string fileName in argumentOption.FileNames) {
         string fileContents = File.ReadAllText(fileName);

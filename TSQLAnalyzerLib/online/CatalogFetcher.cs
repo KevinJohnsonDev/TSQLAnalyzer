@@ -258,7 +258,9 @@ namespace TSQLAnalyzerLib.online
                     ResolvedColumn column = table.Columns[columnOrdinal - 1];
 
                     if (indexOrdinal == 1) {
+#if DEBUG
                         Console.WriteLine($"Index Processed {idx?.ToString() ?? "starting..."}");
+#endif 
                         var columns = new List<ResolvedColumn>() { column };
                         var uniquish = isUnique || IsUniqueConstraint;
                         var includedColumns = new List<ResolvedColumn>();
