@@ -185,9 +185,19 @@ namespace TSQLAnalyzerLib.listeners
                 var left = c.left;
                 var right = c.right;
                 var op = c.op.Text;
-                var rightText = right is null ? (op == "IS" ? "NULL" : "") : right.GetText();
-                var leftOp = new Operand(AsBaseToken(left), left is Function_call_expressionContext, FunctionOverConstant(left),_inWhere,_caseExpressionDepth > 0, _position.SubqueryDepth);
-                var rightOp = new Operand(AsBaseToken(right,rightText), right is Function_call_expressionContext, FunctionOverConstant(right), _inWhere, _caseExpressionDepth > 0, _position.SubqueryDepth);
+                var leftBaseToken = AsBaseToken(left);
+                BaseToken rightToken;
+                string rightText;
+                if(right is null) {
+                    rightText = op == "IS" ? "NULL" : "";
+                    rightToken = new BaseToken(rightText,leftBaseToken.End+2, leftBaseToken.End + rightText.Length);
+                }
+                else {
+                    rightText = right.GetText();
+                    rightToken = AsBaseToken(right, rightText);
+                }
+                var leftOp = new Operand(leftBaseToken, left is Function_call_expressionContext, FunctionOverConstant(left),_inWhere,_caseExpressionDepth > 0, _position.SubqueryDepth);
+                var rightOp = new Operand(rightToken, right is Function_call_expressionContext, FunctionOverConstant(right), _inWhere, _caseExpressionDepth > 0, _position.SubqueryDepth);
                 CurrentStatement.AppendPredicate(new Predicate(AsBaseToken(c), leftOp, rightOp, op, _inWhere, FileName));
             }
             else if(child is Binary_in_expressionContext ec)
@@ -299,7 +309,7 @@ namespace TSQLAnalyzerLib.listeners
             return result.ToArray();
         }
 
-        private  bool FunctionOverConstant(ExpressionContext exp)
+        private  bool FunctionOverConstant(ExpressionContext? exp)
         {
             
             if (exp is null) { return false; }

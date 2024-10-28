@@ -94,50 +94,50 @@ namespace TSQLAnalyzerLibTests {
         [TestMethod]
 
         public void TableUsageReporterCountsInsertStatements() {
-            var fullyQualifiedWithImplicitSameName = @"
-        INSERT INTO dbo.B(ID,Val)
-        SELECT ID,BVal FROM dbo.C;
-        ";
-            SqlListener listener = TestMethods.Init(fullyQualifiedWithImplicitSameName);
-            TableUsageReporter tur = new(listener.Statements);
-            Assert.IsTrue(tur.Tables.Count == 2);
-            Assert.IsTrue(tur.Tables.ContainsKey("dbo.B"));
-            Assert.IsTrue(tur.Tables.ContainsKey("dbo.C"));
+            AfterTablesAsserted(@"
+                INSERT INTO dbo.B(ID,Val)
+                SELECT ID,BVal FROM dbo.C;
+            ");
 
         }
         [TestMethod]
 
         public void TableUsageReporterCountsUpdateStatements() {
-            var fullyQualifiedWithImplicitSameName = @"
-        UPDATE B
-        SET VAL = VAL 
-        FROM dbo.B AS B
-        JOIN dbo.C AS C
-        ON B.ID = C.ID;
-        ";
-            SqlListener listener = TestMethods.Init(fullyQualifiedWithImplicitSameName);
-            TableUsageReporter tur = new(listener.Statements);
-            Assert.IsTrue(tur.Tables.Count == 2);
-            Assert.IsTrue(tur.Tables.ContainsKey("dbo.B"));
-            Assert.IsTrue(tur.Tables.ContainsKey("dbo.C"));
+            AfterTablesAsserted(@"
+                UPDATE B SET VAL = VAL FROM dbo.B AS B JOIN dbo.C AS C ON B.ID = C.ID;"
+            );
 
         }
         [TestMethod]
 
         public void TableUsageReporterCountDeleteStatements() {
-            var fullyQualifiedWithImplicitSameName = @"
-        DELETE B
-        FROM dbo.B AS B
-        JOIN dbo.C AS C
-        ON B.ID = C.ID;
-        ";
-            SqlListener listener = TestMethods.Init(fullyQualifiedWithImplicitSameName);
-            TableUsageReporter tur = new(listener.Statements);
-            Assert.IsTrue(tur.Tables.Count == 2);
-            Assert.IsTrue(tur.Tables.ContainsKey("dbo.B"));
-            Assert.IsTrue(tur.Tables.ContainsKey("dbo.C"));
+            AfterTablesAsserted(@"DELETE B FROM dbo.B AS B JOIN dbo.C AS CON B.ID = C.ID;");
 
         }
 
+        [TestMethod]
+        public void TableUsageReporterCountsInsideCorrelatedSubqueries() {
+            AfterTablesAsserted(@"
+            SELECT (SELECT B.ID FROM dbo.B AS B WHERE B.ID = C.ID) AS BID
+            FROM dbo.C AS C;");
+        }
+        [TestMethod]
+        public void TableUsageReporterCountsInsideCrossApply() {
+            AfterTablesAsserted(@"
+                SELECT B.ID
+                FROM dbo.C AS C
+                CROSS APPLY(
+                    SELECT B.ID FROM dbo.B
+                ) AS B;",2);
+        }
+
+        private TableUsageReporter  AfterTablesAsserted(string sql, int expected = 2) {
+            SqlListener listener = TestMethods.Init(sql);
+            TableUsageReporter tur = new(listener.Statements);
+            Assert.IsTrue(tur.Tables.Count == expected);
+            Assert.IsTrue(tur.Tables.ContainsKey("dbo.B"));
+            Assert.IsTrue(tur.Tables.ContainsKey("dbo.C"));
+            return tur;
+        }
     }
 }

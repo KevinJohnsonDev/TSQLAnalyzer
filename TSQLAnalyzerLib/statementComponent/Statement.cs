@@ -70,15 +70,14 @@ namespace TSQLAnalyzerLib.statementComponent {
         public List<Subquery> Subqueries { get; } = new List<Subquery>();
         public Table? DmlTarget { get; set; }
 
-        private string? _unresolvedUpdateTarget;
 
         public List<Table> Tables { get; } = new List<Table>();
         public List<Column> Columns { get; } = new List<Column>();
 
         private IAliasable? CurrentAliasable { get; set; }
 
-        private Subquery PreviousSubquery { get; set; }
-        private Subquery CurrentSubquery { get; set; }
+        private Subquery? PreviousSubquery { get; set; }
+        private Subquery? CurrentSubquery { get; set; }
         private Stack<Subquery> PendingSubqueries { get; }
 
         private readonly List<ISargable> _nonSargableTokens = new();
@@ -124,6 +123,7 @@ namespace TSQLAnalyzerLib.statementComponent {
             DbContext = db;
             UsesDistinct = usesDistinct;
             FileName = fileName;
+            PendingSubqueries = new();
         }
 
         public bool IsSargable()
@@ -194,12 +194,11 @@ namespace TSQLAnalyzerLib.statementComponent {
             Statement statement = CurrentSubquery ?? this;
             foreach (Column col in statement.UnresolvedColumns)
             {
-                foreach (var kvp in statement.Tables.Where((table)=> table.Columns is not null))
+                foreach (Table table in statement.Tables.Where((table)=> table.Columns is not null))
                 {
-                    var resolvedTable = kvp.ResolvedTable;
-                    var table = kvp;
-                    ResolvedColumn? tableCol = table?.Columns.FirstOrDefault((tableCol) => tableCol.ColumnName == col.ColumnName)?.ResolvedColumn;
+                    ResolvedColumn? tableCol = table.Columns.FirstOrDefault((tableCol) => tableCol.ColumnName == col.ColumnName)?.ResolvedColumn;
                     if (tableCol is null) { continue; }
+                    if (String.IsNullOrWhiteSpace(col.OwnerID)) { continue; }
                     if (col.OwnerID == table.Alias)
                     {
                         col.ResolvedColumn = tableCol;

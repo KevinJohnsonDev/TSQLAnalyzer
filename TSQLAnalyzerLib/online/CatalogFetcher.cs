@@ -6,6 +6,7 @@ using static System.Formats.Asn1.AsnWriter;
 using System.ComponentModel.DataAnnotations;
 using System;
 using TSQLAnalyzerLib.statementComponent;
+using System.Diagnostics;
 
 namespace TSQLAnalyzerLib.online
 {
@@ -269,6 +270,7 @@ namespace TSQLAnalyzerLib.online
                         table.Add(idx);
                     }
                     else {
+                        Debug.Assert(idx is not null);
                         idx.Columns.Add(column);
                         if (isIncludedColumn) { idx.IncludedColumns.Add(column); }
                     }

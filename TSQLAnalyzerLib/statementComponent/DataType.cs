@@ -2,10 +2,10 @@
     public class DataType : ITokenText, IEquatable<DataType?>
     {
         /*Declaration TokenText */
-        public string TokenText { get; init; }
-        public int Start { get; init; }
-        public int End { get; init; }
-
+        public BaseToken Token { get; init; }
+        public string TokenText => Token.TokenText;
+        public int Start => Token.Start;
+        public int End => Token.End;
 
         public SqlDataTypes BaseType { get; init; }
         public int? Precision { get; init; }
@@ -13,9 +13,7 @@
 
         public DataType(BaseToken token, string dataType, int? precision = null, int? scale = null)
         {
-            TokenText = token.TokenText;
-            Start = token.Start;
-            End = token.End;
+            Token = token;
             BaseType = Enum.TryParse(dataType, out SqlDataTypes dt) ? dt : SqlDataTypes.USER_DEFINED;
             Precision = precision;
             Scale = scale;
@@ -47,6 +45,10 @@
         public static DataType FromDatabase(string dataType, int? precision = null, int? scale = null)
         {
             return new DataType(BaseToken.OnlineToken, dataType, precision, scale);
+        }
+
+        public override bool Equals(object? obj) {
+            return Equals(obj as DataType);
         }
     }
 }

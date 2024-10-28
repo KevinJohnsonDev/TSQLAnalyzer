@@ -21,9 +21,17 @@ namespace TSQLAnalyzerLib.analysis
             foreach (Statement statement in statements) {
                 TraverseSubqueries(statement);
                 foreach (var table in statement.Tables) {
+                    /*
+                    Derived tables don't have fully qualified names 
+                    currently derived tables are also counted by the statement subqueries
+                    so we only need to traverse all subqueries for base tables 
+                    */
+                    if (String.IsNullOrWhiteSpace(table.FQN)) { continue; } 
+
                     MapTable(statement, table);
                 }
                 if(statement.DmlTarget is not null) {
+
                     MapTable(statement, statement.DmlTarget);
                 }
 
@@ -45,12 +53,13 @@ namespace TSQLAnalyzerLib.analysis
                 Tables[table.FQN].Add(statement);
             }
             if (table.ResolvedTable != null) { return; }
-            if (!Unresolved.ContainsKey(table.FQN)) {
-                Unresolved.Add(table.FQN, new List<Statement>());
+            if (!Unresolved.TryGetValue(table.FQN, out List<Statement>? value)) {
+                value = new List<Statement>();
+                Unresolved.Add(table.FQN, value);
                 Unresolved[table.FQN].Add(statement);
             }
-            if (!Unresolved[table.FQN].Contains(statement)) {
-                Unresolved[table.FQN].Add(statement);
+            if (!value.Contains(statement)) {
+                value.Add(statement);
             }
         }
     }
