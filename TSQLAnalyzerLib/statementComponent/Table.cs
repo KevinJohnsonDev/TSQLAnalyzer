@@ -31,21 +31,15 @@ namespace TSQLAnalyzerLib.statementComponent {
                 Columns.AddRange(_resolvedTable.Columns.Select((x)=> x.AsColumn()));
             } }
 
-        public Table(BaseToken token, ResolvedTable dst, Identifier id)
+        public Table(BaseToken token,  Identifier id, ResolvedTable? rt = null)
     {
             Token = token;
             Id = id;
             Alias = id.Alias;
-            ResolvedTable = dst;
+            if(rt is not null) ResolvedTable = rt;
         }
 
-        public Table(BaseToken token, Identifier id)
-        {
-            Token = token;
-            Id = id;
-            Alias = id.Alias;
 
-        }
 
 
         public override string ToString() => $"{TokenText}:{Start}-{End}\n\tDatabase:{Database}\n\tSchema:{Schema}\n\tTableName:{TableName}\n\tAlias:{Alias}\n\tUsedAs:{UsedAs}";

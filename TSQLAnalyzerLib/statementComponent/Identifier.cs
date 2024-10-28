@@ -19,10 +19,10 @@ namespace TSQLAnalyzerLib.statementComponent {
 
         public string FQN { get; init; }
         public Identifier(string? alias,bool usedAs, string name, string? schema, string? database) {
-            components[0] = name;
-            components[1] = schema ?? "dbo";
-            components[2] = database ?? "";
-            _alias = alias ?? "";
+            components[0] = name.Replace("[", "").Replace("]", "");
+            components[1] = schema?.Replace("[", "").Replace("]", "") ?? "dbo";
+            components[2] = database?.Replace("[", "").Replace("]", "") ?? "";
+            _alias = alias?.Replace("[", "").Replace("]", "") ?? "";
             _usedAs = usedAs;
             var prefix = string.IsNullOrWhiteSpace(Database) ? "" : $"{Database}.";
             FQN = $"{prefix}{Schema}.{Name}";

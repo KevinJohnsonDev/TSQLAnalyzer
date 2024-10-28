@@ -19,11 +19,12 @@
                             table.TableName == tableName);
         }
 
-        public ResolvedTable? Seek(Table table)
-        {
-            var db = table.Database.Replace("[", "").Replace("]", "");
-            var schema = table.Schema.Replace("[", "").Replace("]", "");
-            var tableName = table.TableName.Replace("[", "").Replace("]", "");
+        public ResolvedTable? Seek(Table table) => Seek(table.Id);
+
+        public ResolvedTable? Seek(Identifier id) {
+            var db = id.Database;
+            var schema = id.Schema;
+            var tableName = id.Name;
             return Tables.FirstOrDefault(
                 (table) => table.Database == db &&
                             table.Schema == schema &&

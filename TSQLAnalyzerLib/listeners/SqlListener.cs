@@ -104,13 +104,7 @@ namespace TSQLAnalyzerLib.listeners
             Full_table_nameContext tableName = ddlObj.full_table_name();
             TableParts? tp = ExtractAndAddTableItem(AsBaseToken(context), tableName,null, null);
             Debug.Assert(tp is not null);
-            if (tp.ResolvedTable != null) {
-                CurrentStatement.DmlTarget = new Table(tp.Context, tp.ResolvedTable, tp.Id);
-            }
-            else {
-                CurrentStatement.DmlTarget = new Table(tp.Context, tp.Id);
-
-            }
+            CurrentStatement.DmlTarget = new Table(tp.Context, tp.Id, tp.ResolvedTable);
 
         }
 
@@ -351,7 +345,7 @@ namespace TSQLAnalyzerLib.listeners
             switch(tp.TableType){
                 case TableType.Normal:
 #pragma warning disable CS8604 // Possible null reference argument.
-                    CurrentStatement.AddTable(tp.Context, tp.Id, DbCatalog);
+                    CurrentStatement.AddTable(tp.Context, tp.Id, DbCatalog,tp.ResolvedTable);
 #pragma warning restore CS8604 // Possible null reference argument.
                     break;
                 case TableType.Derived:

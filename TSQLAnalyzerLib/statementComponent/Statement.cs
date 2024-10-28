@@ -180,7 +180,7 @@ namespace TSQLAnalyzerLib.statementComponent {
             List<Column> remainingColumns = new();
             foreach (Table table in UnresolvedTables)
             {
-                ResolvedTable? dst = catalog.Seek(table);
+                ResolvedTable? dst = catalog.Seek(table.Id);
                 if (dst is null)
                 {
                     remainingTables.Add(table);
@@ -216,9 +216,7 @@ namespace TSQLAnalyzerLib.statementComponent {
             }
             statement.UnresolvedColumns.RemoveAll(col => col.ResolvedColumn is not null);
         }
-        public void AddTable(BaseToken token, Identifier id, Catalog catalog) => AddTable(new Table(token, id), catalog);
-
-        public void AddTable(BaseToken token, ResolvedTable dst, Identifier id, Catalog catalog) => AddTable(new Table(token, dst, id), catalog);
+        public void AddTable(BaseToken token, Identifier id, Catalog catalog, ResolvedTable? dst) => AddTable(new Table(token, id,dst), catalog);
 
         public void AddDerivedTable(BaseToken token, Identifier id)
         {
@@ -232,7 +230,7 @@ namespace TSQLAnalyzerLib.statementComponent {
         public void AddTable(Table tbl, Catalog catalog)
         {
             ResolvedTable? dst = tbl.ResolvedTable is not null ? 
-                tbl.ResolvedTable : catalog.Seek(tbl);
+                tbl.ResolvedTable : catalog.Seek(tbl.Id);
             if(dst != null && tbl.ResolvedTable is null) { tbl.ResolvedTable = dst; }
             AppendTable(CurrentSubquery ?? this, dst, tbl);
         }
