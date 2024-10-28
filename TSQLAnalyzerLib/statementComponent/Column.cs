@@ -12,13 +12,15 @@
                 Table = resolvedColumn.Table;
             }
         }
-        public string TokenText { get; init; }
-        public int Start { get; init; }
-        public int End { get; init; }
+
+        public BaseToken Token { get; init; }
+        public string TokenText => Token.TokenText;
+        public int Start => Token.Start;
+        public int End => Token.End;
         public string ColumnName { get; init; }
         public bool UsedAs { get; set; }
 
-        public string Alias { get; set; }
+        public string Alias { get; set; } 
 
         /* This references the fully resolved table post parse */
         public ResolvedTable? Table { get; set; }
@@ -26,16 +28,11 @@
         /* This represents either the table OR the named table expression that this column references during parseTime */
         public string OwnerID { get; set; }
 
-        public DataType? SqlType { get; set; }
-
-        public Column(BaseToken token, string ownerID, string columnName,StatementPosition postition, DataType sqlType = null)
+        public Column(BaseToken token, string ownerID, string columnName,StatementPosition postition)
         {
-            TokenText = token.TokenText;
-            Start = token.Start;
-            End = token.End;
+            Token = token;
             ColumnName = columnName;
             OwnerID = ownerID;
-            SqlType = sqlType;
             Position = postition;
         }
 
