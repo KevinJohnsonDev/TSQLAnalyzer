@@ -16,7 +16,7 @@ namespace TSQLAnalyzerLib.statementComponent {
         public string Schema => Id.Schema;
         public string TableName => Id.Name;
 
-        private List<Column> _columns = new List<Column>();
+        private List<Column> _columns = new();
         public virtual List<Column> Columns { get { return _columns; } }
 
         public List<ResolvedColumn> ResolvedColumns { get; init; } = new List<ResolvedColumn>();

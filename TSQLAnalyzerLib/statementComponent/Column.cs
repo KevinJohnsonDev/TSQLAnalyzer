@@ -1,7 +1,32 @@
 ﻿namespace TSQLAnalyzerLib.statementComponent {
-    public class Column : ITokenText, IAliasable {
 
-        public StatementPosition Position{get;init;}
+
+    public abstract class Column : ITokenText, IAliasable {
+
+        public StatementPosition Position { get; init; }
+        public BaseToken Token { get; init; }
+        public string TokenText => Token.TokenText;
+        public int Start => Token.Start;
+        public int End => Token.End;
+        public bool UsedAs { get; set; }
+
+        public string Alias { get; set; }
+
+        public Column(BaseToken token, StatementPosition postition) {
+            Token = token;
+            Position = postition;
+        }
+
+    }
+
+    public class ConstantColumn : Column {
+
+        public string Value { get; init; }
+        public ConstantColumn(BaseToken token, StatementPosition postition,string value):base(token, postition) {
+            Value = value;
+        }
+    }
+    public class SimpleColumn : Column {
 
         private ResolvedColumn? resolvedColumn = null;
         public ResolvedColumn? ResolvedColumn {
@@ -13,14 +38,7 @@
             }
         }
 
-        public BaseToken Token { get; init; }
-        public string TokenText => Token.TokenText;
-        public int Start => Token.Start;
-        public int End => Token.End;
         public string ColumnName { get; init; }
-        public bool UsedAs { get; set; }
-
-        public string Alias { get; set; } 
 
         /* This references the fully resolved table post parse */
         public ResolvedTable? Table { get; set; }
@@ -28,7 +46,7 @@
         /* This represents either the table OR the named table expression that this column references during parseTime */
         public string OwnerID { get; set; }
 
-        public Column(BaseToken token, string ownerID, string columnName,StatementPosition postition)
+        public SimpleColumn(BaseToken token, string ownerID, string columnName,StatementPosition postition):base(token, postition)
         {
             Token = token;
             ColumnName = columnName;
@@ -36,10 +54,7 @@
             Position = postition;
         }
 
-
-
         public override string ToString() => $"{TokenText}:{Start}-{End}\n\tColumnName:{ColumnName}\n\tUsedAs:{UsedAs}\n\tOwnerID:{OwnerID}\n\tTable:{Table?.ToString()}";
-
 
     }
 }

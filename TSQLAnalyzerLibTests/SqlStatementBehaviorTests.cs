@@ -1,4 +1,5 @@
 ﻿using TSQLAnalyzerLib.listeners;
+using TSQLAnalyzerLib.statementComponent;
 
 namespace TSQLAnalyzerLibTests {
     [TestClass]
@@ -10,8 +11,10 @@ namespace TSQLAnalyzerLibTests {
             var input = "SELECT a.b AS D, a.c FROM msdb.dbo.A AS a WHERE A.id IN (SELECT RTRIM(B.ID) AS BID FROM msdb.dbo.B AS B) ";
             SqlListener listener = TestMethods.Init(input);
             Assert.IsTrue(listener.Statements[0].Subqueries[0].Columns.Count == 1);
-            var column = listener.Statements[0].Subqueries[0].Columns[0];
+            SimpleColumn column = listener.Statements[0].Subqueries[0].Columns[0] as SimpleColumn;
+            Assert.IsTrue(column is not null);
             var owner = column.OwnerID;
+            
             Assert.IsTrue(column.ColumnName == "ID");
             Assert.IsTrue(column.TokenText == "B.ID");
             Assert.IsTrue(column.Alias == "BID");

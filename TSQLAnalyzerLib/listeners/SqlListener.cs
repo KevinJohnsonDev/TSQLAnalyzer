@@ -139,7 +139,7 @@ namespace TSQLAnalyzerLib.listeners
             var tokenText = context.GetText();
             var parts = tokenText.Replace("[", "").Replace("]", "").Split(".");
             if (parts.Length >= 2) {
-                CurrentStatement.AddColumn(AsBaseToken(context), parts[parts.Length - 2], parts[parts.Length - 1],(StatementPosition)_position.Clone());
+                CurrentStatement.AddSimpleColumn(AsBaseToken(context), parts[parts.Length - 2], parts[parts.Length - 1],(StatementPosition)_position.Clone());
             }
             base.ExitFull_column_name(context);
         }

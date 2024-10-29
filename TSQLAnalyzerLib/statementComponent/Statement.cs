@@ -142,9 +142,9 @@ namespace TSQLAnalyzerLib.statementComponent {
 
 
 
-        public void AddColumn(BaseToken token, string tableName, string columnName,StatementPosition position)
+        public void AddSimpleColumn(BaseToken token, string tableName, string columnName,StatementPosition position)
         {
-            var col = new Column(token, tableName, columnName,position);
+            var col = new SimpleColumn(token, tableName, columnName,position);
 
             if (CurrentSubquery is not null)
             {
@@ -192,11 +192,12 @@ namespace TSQLAnalyzerLib.statementComponent {
             UnresolvedTables.AddRange(remainingTables);
 
             Statement statement = CurrentSubquery ?? this;
-            foreach (Column col in statement.UnresolvedColumns)
+            foreach (SimpleColumn col in statement.UnresolvedColumns.Where((x) => x is SimpleColumn))
             {
                 foreach (Table table in statement.Tables.Where((table)=> table.Columns is not null))
                 {
-                    ResolvedColumn? tableCol = table.Columns.FirstOrDefault((tableCol) => tableCol.ColumnName == col.ColumnName)?.ResolvedColumn;
+                    IEnumerable<SimpleColumn> sc = table.Columns.OfType<SimpleColumn>();
+                    ResolvedColumn ? tableCol = sc.FirstOrDefault((tableCol) => tableCol is SimpleColumn sc && sc.ColumnName == col.ColumnName)?.ResolvedColumn;
                     if (tableCol is null) { continue; }
                     if (String.IsNullOrWhiteSpace(col.OwnerID)) { continue; }
                     if (col.OwnerID == table.Alias)
@@ -213,7 +214,7 @@ namespace TSQLAnalyzerLib.statementComponent {
 
 
             }
-            statement.UnresolvedColumns.RemoveAll(col => col.ResolvedColumn is not null);
+            statement.UnresolvedColumns.RemoveAll(col => col is SimpleColumn sc && sc.ResolvedColumn is not null);
         }
         public void AddTable(BaseToken token, Identifier id, Catalog catalog, ResolvedTable? dst) => AddTable(new Table(token, id,dst), catalog);
 
@@ -270,7 +271,7 @@ namespace TSQLAnalyzerLib.statementComponent {
         public override string ToString()
         {
             var tables = "Table List";
-            var columns = "Column List";
+            var columns = "SimpleColumn List";
             var preds = "Predicate List";
             var subs = "Subquery List";
             foreach (var table in Tables) { tables += "\n\t\t" + table.ToString().ToString().Replace("\t", "\t\t\t"); }
