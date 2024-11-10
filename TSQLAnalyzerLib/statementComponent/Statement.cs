@@ -62,6 +62,8 @@ namespace TSQLAnalyzerLib.statementComponent {
 
         public string FileName { get; init; } = "";
         public string DbContext { get; init; } = "";
+
+        public BaseToken Token { get; init; }
         public string TokenText { get; init; }
         public int Start { get; init; }
         public int End { get; init; }
@@ -107,6 +109,7 @@ namespace TSQLAnalyzerLib.statementComponent {
 
         public Statement(BaseToken token, string fileName)
         {
+            Token = token;
             TokenText = token.TokenText;
             Start = token.Start;
             End = token.End;
@@ -117,6 +120,7 @@ namespace TSQLAnalyzerLib.statementComponent {
         }
         public Statement(BaseToken token, string db, bool usesDistinct, string fileName)
         {
+            Token = token;
             TokenText = token.TokenText;
             Start = token.Start;
             End = token.End;
@@ -215,6 +219,11 @@ namespace TSQLAnalyzerLib.statementComponent {
 
             }
             statement.UnresolvedColumns.RemoveAll(col => col is SimpleColumn sc && sc.ResolvedColumn is not null);
+        }
+
+        public void AddCTE(DerivedTable dt) {
+            Tables.Add(dt);
+
         }
         public void AddTable(BaseToken token, Identifier id, Catalog catalog, ResolvedTable? dst) => AddTable(new Table(token, id,dst), catalog);
 

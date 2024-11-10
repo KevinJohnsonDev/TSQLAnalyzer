@@ -53,6 +53,7 @@ namespace TSQLAnalyzerLib.listeners
         protected readonly Parser _parser;
         private Statement CurrentStatement { get; set; }
 
+        private List<DerivedTable> _ctes = new();
 
         private statementComponent.Environment CurrentEnvironment { get; set; } = new statementComponent.Environment();
 
@@ -69,19 +70,19 @@ namespace TSQLAnalyzerLib.listeners
 
 
 
-        public override void EnterTable_sources([Antlr4.Runtime.Misc.NotNull] Table_sourcesContext context)
+        public override void EnterTable_sources([NotNull] Table_sourcesContext context)
         {
             _position.WhereDepth += 1; 
             _inWhere = true;
         }
 
-        public override void ExitTable_sources([Antlr4.Runtime.Misc.NotNull] Table_sourcesContext context) {
+        public override void ExitTable_sources([NotNull] Table_sourcesContext context) {
             _position.WhereDepth -= 1;
             _inWhere = true;
         }
 
 
-        public override void ExitDml_clause([Antlr4.Runtime.Misc.NotNull] Dml_clauseContext context)
+        public override void ExitDml_clause([NotNull] Dml_clauseContext context)
         {
             _inWhere = false;
             _position.Reset();
@@ -95,25 +96,56 @@ namespace TSQLAnalyzerLib.listeners
             _position.SelectDepth -= 1;
         }
 
-        public override void ExitSelect_statement_standalone([Antlr4.Runtime.Misc.NotNull] Select_statement_standaloneContext context) {
+        public override void ExitSelect_statement_standalone([NotNull] Select_statement_standaloneContext context) {
             CurrentStatement.Resolve(DbCatalog);
         }
-        public override void EnterInsert_statement([Antlr4.Runtime.Misc.NotNull] Insert_statementContext context) {
+        public override void ExitInsert_statement([NotNull] Insert_statementContext context) {
+            CurrentStatement.Resolve(DbCatalog);
+        }
+
+
+
+        public override void EnterInsert_statement([NotNull] Insert_statementContext context) {
             CurrentStatement = new Statement(AsBaseToken(context),FileName);
             Ddl_objectContext ddlObj = context.ddl_object();
             Full_table_nameContext tableName = ddlObj.full_table_name();
             TableParts? tp = ExtractAndAddTableItem(AsBaseToken(context), tableName,null, null);
             Debug.Assert(tp is not null);
             CurrentStatement.DmlTarget = new Table(tp.Context, tp.Id, tp.ResolvedTable);
-
+            
         }
 
 
 
-        public override void EnterBatch([Antlr4.Runtime.Misc.NotNull] BatchContext context)
+        public override void EnterCommon_table_expression([NotNull] Common_table_expressionContext context) {
+            var id = new Identifier(context.expression_name.GetText(), true);
+            var table = new DerivedTable(AsBaseToken(context), CurrentStatement, id);
+            _ctes.Add(table);
+            CurrentStatement.AddCTE(table);
+        }
+
+        /*
+        
+        common_table_expression
+            : expression_name = id_ ('(' columns = column_name_list ')')? AS '(' cte_query = select_statement ')'
+    ; 
+         */
+        public override void ExitCommon_table_expression([NotNull] Common_table_expressionContext context) {
+            CurrentStatement.Resolve(DbCatalog);
+            /*Resolving the Current Statement Doesn't Update the Already Existing Derived Table So WE have to reinitialize it */
+            _ctes[^1] = new DerivedTable(_ctes[^1].Token, CurrentStatement, _ctes[^1].Id);
+            
+            var currentCTE = _ctes[^1];
+            CurrentStatement = new Statement(CurrentStatement.Token, FileName);
+            foreach(DerivedTable cte in _ctes) {
+                if (!CurrentStatement.Tables.Contains(cte)) { CurrentStatement.AddCTE(cte); }
+            }
+        }
+
+        public override void EnterBatch([NotNull] BatchContext context)
         {
             Environments.Add(new statementComponent.Environment());
-            CurrentEnvironment = Environments[Environments.Count-1];
+            CurrentEnvironment = Environments[^1];
         }
 
 
@@ -129,12 +161,12 @@ namespace TSQLAnalyzerLib.listeners
             Statements.Add(CurrentStatement);
 
         }
-        public override void EnterUse_statement([NN] TSqlParser.Use_statementContext context)
+        public override void EnterUse_statement([NN] Use_statementContext context)
         {
             DB = context.Stop.Text;
         }
 
-        public override void ExitFull_column_name([Antlr4.Runtime.Misc.NotNull] Full_column_nameContext context)
+        public override void ExitFull_column_name([NotNull] Full_column_nameContext context)
         {
             var tokenText = context.GetText();
             var parts = tokenText.Replace("[", "").Replace("]", "").Split(".");
@@ -156,11 +188,11 @@ namespace TSQLAnalyzerLib.listeners
 
         public override void EnterCase_expression([NN] Case_expressionContext context) => _caseExpressionDepth += 1;
         public override void ExitCase_expression([NN] Case_expressionContext context) => _caseExpressionDepth -= 1;
-        public override void EnterSubquery([Antlr4.Runtime.Misc.NotNull] SubqueryContext context) {
+        public override void EnterSubquery([NotNull] SubqueryContext context) {
             _position.SubqueryDepth += 1;
             CurrentStatement.EnterSubquery(AsBaseToken(context));
          }
-        public override void ExitSubquery([Antlr4.Runtime.Misc.NotNull] SubqueryContext context)
+        public override void ExitSubquery([NotNull] SubqueryContext context)
         {
             CurrentStatement.Resolve(DbCatalog);
             _position.SubqueryDepth -= 1;
@@ -349,7 +381,7 @@ namespace TSQLAnalyzerLib.listeners
 
 
 
-        public override void ExitTable_source_item([Antlr4.Runtime.Misc.NotNull] Table_source_itemContext context) {
+        public override void ExitTable_source_item([NotNull] Table_source_itemContext context) {
             TableParts? tp = ExtractAndAddTableItem(AsBaseToken(context),context.full_table_name(),context.derived_table(),context.as_table_alias());
             Debug.Assert (tp != null);
             switch(tp.TableType){
@@ -394,7 +426,7 @@ namespace TSQLAnalyzerLib.listeners
             return null;
         }
 
-        public override void EnterDeclare_statement([Antlr4.Runtime.Misc.NotNull] Declare_statementContext context)
+        public override void EnterDeclare_statement([NotNull] Declare_statementContext context)
         {   /*DataTypes Don't have about spaces so we can use GetText*/
             var dataType = context.data_type();
             if(dataType != null) {
@@ -498,7 +530,7 @@ namespace TSQLAnalyzerLib.listeners
         }
 
 
-        public override void EnterCreate_index([Antlr4.Runtime.Misc.NotNull] Create_indexContext context) {
+        public override void EnterCreate_index([NotNull] Create_indexContext context) {
             Table_nameContext? tableNameContext = context.table_name() ?? throw new InvalidDataException("Erorr:Create Index ON Non Table");
             string database = (tableNameContext.database?.GetText() ?? DB).Replace("[", "").Replace("]", "");
             string schema = (tableNameContext.schema.GetText() ?? "dbo").Replace("[", "").Replace("]", "");

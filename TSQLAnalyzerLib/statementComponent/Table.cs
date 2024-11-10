@@ -79,8 +79,8 @@ namespace TSQLAnalyzerLib.statementComponent {
         private List<Column> _columns = new();
         public override List<Column> Columns { get { return _columns; } }
 
-        private readonly Subquery _sub;
-        public DerivedTable(BaseToken token, Subquery sub, Identifier id):base(token,id) {
+        private readonly Statement _sub;
+        public DerivedTable(BaseToken token, Statement sub, Identifier id):base(token,id) {
             Alias = id.Alias;
             UsedAs = id.UsedAs;
             _sub = sub;
@@ -89,6 +89,5 @@ namespace TSQLAnalyzerLib.statementComponent {
                     AddRange(sub.Columns.Where((col) => col.Position.IsProjected).ToList());
             }
         }
-
     }
 }
