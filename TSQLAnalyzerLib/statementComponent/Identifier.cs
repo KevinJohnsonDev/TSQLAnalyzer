@@ -50,6 +50,12 @@ namespace TSQLAnalyzerLib.statementComponent {
                    Name == other.Name;
         }
 
+        public bool Matches2PartName(Identifier? other) {
+            return other is not null &&
+                   Schema == other.Schema &&
+                   Name == other.Name;
+        }
+
         public override int GetHashCode() {
             return HashCode.Combine(Alias, UsedAs, Database, Schema, Name);
         }

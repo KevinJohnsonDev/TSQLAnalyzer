@@ -89,5 +89,16 @@ namespace TSQLAnalyzerLib.statementComponent {
                     AddRange(sub.Columns.Where((col) => col.Position.IsProjected).ToList());
             }
         }
+
+        /*
+         * CTES are not in the catalog and need to be aliased multiple times
+           Via cloning we can have each have their own independendant clones without clobbering aliases
+         */
+        public DerivedTable CloneWithChanges(BaseToken token,Identifier id) {
+           return new DerivedTable(token,_sub, id);
+
+
+        }
+
     }
 }

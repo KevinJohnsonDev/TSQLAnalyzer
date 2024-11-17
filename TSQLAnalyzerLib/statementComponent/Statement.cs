@@ -236,17 +236,31 @@ namespace TSQLAnalyzerLib.statementComponent {
         public void AddDerivedTable(BaseToken token, Identifier id)
         {
             var tbl = new DerivedTable(token, PreviousSubquery, id);
+            AddDerivedTable(tbl);
+
+        }
+
+        public void AddDerivedTable(DerivedTable tbl) {
             var statement = CurrentSubquery ?? this;
             statement.Tables.Add(tbl);
 
         }
 
-
         public void AddTable(Table tbl, Catalog catalog)
         {
             ResolvedTable? dst = tbl.ResolvedTable is not null ? 
                 tbl.ResolvedTable : catalog.Seek(tbl.Id);
-            if(dst != null && tbl.ResolvedTable is null) { tbl.ResolvedTable = dst; }
+            if(dst is null && tbl.ResolvedTable is null) {
+                DerivedTable? cte = CTEs.FirstOrDefault((table) => table.Id.Matches2PartName(tbl.Id));
+                if(cte is not null) {
+                    
+                    AddDerivedTable(cte.CloneWithChanges(tbl.Token,tbl.Id));
+                    return;
+                }
+            }
+            if(dst != null && tbl.ResolvedTable is null) { 
+                tbl.ResolvedTable = dst; 
+            }
             AppendTable(CurrentSubquery ?? this, dst, tbl);
         }
 
