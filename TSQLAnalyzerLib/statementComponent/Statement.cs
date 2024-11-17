@@ -57,8 +57,7 @@ namespace TSQLAnalyzerLib.statementComponent {
         GEOMETRY = 31,
         UNRESOLVED = 99
     }
-    public class Statement : ISargable, ITokenText, INonSargableTokens
-    {
+    public class Statement : ISargable, ITokenText, INonSargableTokens {
 
         public string FileName { get; init; } = "";
         public string DbContext { get; init; } = "";
@@ -72,6 +71,7 @@ namespace TSQLAnalyzerLib.statementComponent {
         public List<Subquery> Subqueries { get; } = new List<Subquery>();
         public Table? DmlTarget { get; set; }
 
+        public List<DerivedTable> CTEs { get; } = new();
 
         public List<Table> Tables { get; } = new List<Table>();
         public List<Column> Columns { get; } = new List<Column>();
@@ -198,32 +198,38 @@ namespace TSQLAnalyzerLib.statementComponent {
             Statement statement = CurrentSubquery ?? this;
             foreach (SimpleColumn col in statement.UnresolvedColumns.Where((x) => x is SimpleColumn))
             {
-                foreach (Table table in statement.Tables.Where((table)=> table.Columns is not null))
-                {
-                    IEnumerable<SimpleColumn> sc = table.Columns.OfType<SimpleColumn>();
-                    ResolvedColumn ? tableCol = sc.FirstOrDefault((tableCol) => tableCol is SimpleColumn sc && sc.ColumnName == col.ColumnName)?.ResolvedColumn;
-                    if (tableCol is null) { continue; }
-                    if (String.IsNullOrWhiteSpace(col.OwnerID)) { continue; }
-                    if (col.OwnerID == table.Alias)
-                    {
-                        col.ResolvedColumn = tableCol;
-                        continue;
-                    }
-                    if (col.OwnerID == table.TableName && table.Alias == "")
-                    {
-                        col.ResolvedColumn = tableCol;
-                        continue;
-                    }
+                foreach (Table table in statement.Tables.Where((table)=> table.Columns is not null)) {
+                    if (col.ResolvedColumn is not null) { break; }
+                    TryMapColumnToTable(col, table);
                 }
+                foreach(DerivedTable table in CTEs) {
+                    if(col.ResolvedColumn is not null) { break; }
+                    TryMapColumnToTable(col, table);
+                }
+
 
 
             }
             statement.UnresolvedColumns.RemoveAll(col => col is SimpleColumn sc && sc.ResolvedColumn is not null);
         }
 
-        public void AddCTE(DerivedTable dt) {
-            Tables.Add(dt);
+        private static void TryMapColumnToTable(SimpleColumn col, Table table) {
+            IEnumerable<SimpleColumn> sc = table.Columns.OfType<SimpleColumn>();
+            ResolvedColumn? tableCol = sc.FirstOrDefault((tableCol) => tableCol is SimpleColumn sc && sc.ColumnName == col.ColumnName)?.ResolvedColumn;
+            if (tableCol is null) { return ; }
+            if (String.IsNullOrWhiteSpace(col.OwnerID)) { return; }
+            if (col.OwnerID == table.Alias) {
+                col.ResolvedColumn = tableCol;
+                return;
+            }
+            if (col.OwnerID == table.TableName && table.Alias == "") {
+                col.ResolvedColumn = tableCol;
+                return;
+            }
+        }
 
+        public void AddCTE(DerivedTable dt) {
+            CTEs.Add(dt);
         }
         public void AddTable(BaseToken token, Identifier id, Catalog catalog, ResolvedTable? dst) => AddTable(new Table(token, id,dst), catalog);
 
@@ -258,6 +264,7 @@ namespace TSQLAnalyzerLib.statementComponent {
         {
             Statement item = CurrentSubquery ?? this;
             var cur = new Subquery(item ?? this, token, FileName);
+            cur.CTEs.AddRange(CTEs);
             var target = item ?? this;
             target.Subqueries.Add(cur);
             PendingSubqueries.Push(cur);

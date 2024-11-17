@@ -179,12 +179,12 @@ namespace TSQLAnalyzerLibTests {
             SqlListener listener = TestMethods.Init(input, MockTables());
             var bTable = listener.DbCatalog.Seek("Sample_DB", "dbo", "B");
             var statement = listener.Statements[2];
-            var resolvedTables = statement.Tables.Where((table) => table.Columns.Count > 0).ToList();
+            var resolvedCtes = statement.CTEs.Where((table) => table.Columns.Count > 0).ToList();
             var resolvedColumns = statement.Columns.OfType<SimpleColumn>()
                 .Where((col) => col.ResolvedColumn is not null)
                 .OrderBy((col) => col.Start)
                 .ToArray();
-            Assert.IsTrue(resolvedTables.Count == 1);
+            Assert.IsTrue(resolvedCtes.Count == 1);
             Assert.IsTrue(resolvedColumns.Length > 0);
             Assert.IsTrue(resolvedColumns[0]?.ResolvedColumn.Table.TableName == "T");
 
@@ -206,14 +206,38 @@ namespace TSQLAnalyzerLibTests {
             SqlListener listener = TestMethods.Init(input, MockTables());
             var bTable = listener.DbCatalog.Seek("Sample_DB", "dbo", "B");
             var statement = listener.Statements[2];
-            var resolvedTables = statement.Tables.Where((table) => table.Columns.Count > 0).ToList();
+            var resolvedCtes = statement.CTEs.Where((table) => table.Columns.Count > 0).ToList();
             var resolvedColumns = statement.Columns.OfType<SimpleColumn>()
                 .Where((col) => col.ResolvedColumn is not null)
                 .OrderBy((col) => col.Start)
                 .ToArray();
-            Assert.IsTrue(resolvedTables.Count == 2);
+            Assert.IsTrue(resolvedCtes.Count == 2);
             Assert.IsTrue(resolvedColumns.Length > 0);
             Assert.IsTrue(resolvedColumns[0]?.ResolvedColumn.Table.TableName == "T");
+
+        }
+
+        [TestMethod]
+        public void CTE_MapsToCatalogInSubqury() {
+            var input = @"
+                USE Sample_DB
+                GO
+                CREATE TABLE dbo.T(ID INT );
+                GO
+                WITH CTE(ID,Val) AS (SELECT T.ID, 'Hello' FROM dbo.T)
+                SELECT C.ID,C.Val FROM (SELECT CTE.ID,CTE.Val FROM CTE) AS C
+            ";
+            SqlListener listener = TestMethods.Init(input, MockTables());
+            var bTable = listener.DbCatalog.Seek("Sample_DB", "dbo", "B");
+            var statement = listener.Statements[2];
+            var resolvedCtes = statement.CTEs.Where((table) => table.Columns.Count > 0).ToList();
+            var resolvedColumns = statement.Columns.OfType<SimpleColumn>()
+                .Where((col) => col.ResolvedColumn is not null)
+                .OrderBy((col) => col.Start)
+                .ToArray();
+            Assert.IsTrue(resolvedCtes.Count == 1);
+            Assert.IsTrue(resolvedColumns.Length > 0);
+            Assert.IsTrue(resolvedColumns[0]?.ResolvedColumn?.Table.TableName == "T");
 
         }
 
