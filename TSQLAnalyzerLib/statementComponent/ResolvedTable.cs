@@ -44,7 +44,6 @@
         public void Add(ResolvedColumn col)
         {
             Columns.Add(col);
-            col.Table = this;
         }
 
         public void Add(IEnumerable<ResolvedColumn> columns) {

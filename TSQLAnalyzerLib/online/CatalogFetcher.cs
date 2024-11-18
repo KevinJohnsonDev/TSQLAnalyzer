@@ -196,8 +196,7 @@ namespace TSQLAnalyzerLib.online
                 if (tableMap.TryGetValue((schema, tableName), out var table))
                 {
                     statementComponent.DataType sdt = statementComponent.DataType.FromDatabase(dataType, precision, scale);
-                    ResolvedColumn col = ResolvedColumn.FromDatabase(columnName, sdt, nullable);
-                    table.Add(col);
+                    ResolvedColumn col = ResolvedColumn.FromDatabase(columnName, sdt, nullable, table);
                 }
                 else
                 {

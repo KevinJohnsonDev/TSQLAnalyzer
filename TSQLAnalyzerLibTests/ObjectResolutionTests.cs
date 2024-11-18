@@ -227,8 +227,7 @@ namespace TSQLAnalyzerLibTests {
                 WITH CTE(ID,Val) AS (SELECT T.ID, 'Hello' FROM dbo.T)
                 SELECT C.ID,C.Val FROM (SELECT CTE.ID,CTE.Val FROM CTE) AS C
             ";
-            SqlListener listener = TestMethods.Init(input, MockTables());
-            var bTable = listener.DbCatalog.Seek("Sample_DB", "dbo", "B");
+            SqlListener listener = TestMethods.Init(input);
             var statement = listener.Statements[2];
             var resolvedCtes = statement.CTEs.Where((table) => table.Columns.Count > 0).ToList();
             var resolvedColumns = statement.Columns.OfType<SimpleColumn>()
@@ -251,8 +250,7 @@ namespace TSQLAnalyzerLibTests {
                 WITH CTE(ID,Val) AS (SELECT T.ID, 'Hello' FROM dbo.T)
                 SELECT C.ID,C.Val FROM (SELECT B.ID,B.Val FROM CTE AS B) AS C
             ";
-            SqlListener listener = TestMethods.Init(input, MockTables());
-            var bTable = listener.DbCatalog.Seek("Sample_DB", "dbo", "B");
+            SqlListener listener = TestMethods.Init(input);
             var statement = listener.Statements[2];
             var resolvedCtes = statement.CTEs.Where((table) => table.Columns.Count > 0).ToList();
             var resolvedColumns = statement.Columns.OfType<SimpleColumn>()
@@ -263,7 +261,10 @@ namespace TSQLAnalyzerLibTests {
             Assert.IsTrue(resolvedColumns.Length > 0);
             Assert.IsTrue(resolvedColumns[0]?.ResolvedColumn?.Table.TableName == "T");
 
+
+
         }
+
 
         static void CheckSub(Statement statement, int idx, ResolvedTable expected) {
 
@@ -289,18 +290,18 @@ namespace TSQLAnalyzerLibTests {
         static List<ResolvedTable> MockTables() {
             var bTable = new ResolvedTable(BaseToken.OnlineToken, "Sample_DB", "dbo", "B");
             List<ResolvedColumn> bColumns = new(){
-                new ResolvedColumn(BaseToken.OnlineToken,"ID",new DataType(BaseToken.OnlineToken,"INT",null,null),false),
-                new ResolvedColumn(BaseToken.OnlineToken,"ActionBy",new DataType(BaseToken.OnlineToken,"VARCHAR",25,null),false),
-                new ResolvedColumn(BaseToken.OnlineToken,"ActionDate",new DataType(BaseToken.OnlineToken,"DATETIME",null),true)
+                new ResolvedColumn(BaseToken.OnlineToken,"ID",new DataType(BaseToken.OnlineToken,"INT",null,null),false,bTable),
+                new ResolvedColumn(BaseToken.OnlineToken,"ActionBy",new DataType(BaseToken.OnlineToken,"VARCHAR",25,null),false, bTable),
+                new ResolvedColumn(BaseToken.OnlineToken,"ActionDate",new DataType(BaseToken.OnlineToken,"DATETIME",null),true,bTable)
 
              };
             bTable.Add(bColumns);
 
             var cTable = new ResolvedTable(BaseToken.OnlineToken, "Sample_DB", "dbo", "C");
             List<ResolvedColumn> cColumns = new(){
-                new ResolvedColumn(BaseToken.OnlineToken,"ID",new DataType(BaseToken.OnlineToken,"INT",null,null),false),
-                new ResolvedColumn(BaseToken.OnlineToken,"ActionBy",new DataType(BaseToken.OnlineToken,"VARCHAR",25,null),false),
-                new ResolvedColumn(BaseToken.OnlineToken,"ActionDate",new DataType(BaseToken.OnlineToken,"DATETIME",null),true)
+                new ResolvedColumn(BaseToken.OnlineToken,"ID",new DataType(BaseToken.OnlineToken,"INT",null,null),false,cTable),
+                new ResolvedColumn(BaseToken.OnlineToken,"ActionBy",new DataType(BaseToken.OnlineToken,"VARCHAR",25,null),false,cTable),
+                new ResolvedColumn(BaseToken.OnlineToken,"ActionDate",new DataType(BaseToken.OnlineToken,"DATETIME",null),true, cTable)
 
              };
             cTable.Add(cColumns);

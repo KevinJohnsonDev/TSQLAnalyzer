@@ -456,6 +456,7 @@ namespace TSQLAnalyzerLib.listeners
            var columns = new List<ResolvedColumn>();
            string? pkName = null;
             ResolvedColumn? pkCol = null;
+            var table = new ResolvedTable(AsBaseToken(ctx), db, schema, tableName, columns);
             /*
              * CREATE --> Token 0 Ignore
              * TABLE --> Token 1 Ignore
@@ -470,7 +471,7 @@ namespace TSQLAnalyzerLib.listeners
                 }
                 foreach(var token in columnConstraint.children) {
                     if (token is Column_def_table_constraintContext column) {
-                        var col = ExtractedColumnDefinition(column);
+                        var col = ExtractedColumnDefinition(column,table);
                         if (col is null) { continue; }
                             columns.Add(col);
                             var (isPrimaryKey,constraintName) = ExtractPrimaryKeyColumnConstraint(column);
@@ -481,7 +482,7 @@ namespace TSQLAnalyzerLib.listeners
                     }
                 }         
             }
-            var table = new ResolvedTable(AsBaseToken(ctx), db, schema, tableName, columns);
+
             if (pkCol is not null) { table.SetPrimaryKey(pkCol, pkName); }
             DbCatalog.Add(table);
 
@@ -503,7 +504,7 @@ namespace TSQLAnalyzerLib.listeners
                 var con = ctx.column_def_table_constraints().column_def_table_constraint(0);
                 var tableConstraint = con.table_constraint();
                 if (tableConstraint == null) {
-                    var column = ExtractedColumnDefinition(ctx.column_def_table_constraints().column_def_table_constraint(0));
+                    var column = ExtractedColumnDefinition(ctx.column_def_table_constraints().column_def_table_constraint(0), target);
                     target.Add(column);
                 }
                 else {
@@ -523,7 +524,7 @@ namespace TSQLAnalyzerLib.listeners
                 target.Drop(column);
             }
             else if (isAlter) {
-                var column = ExtractedColumnDefinition(ctx.column_def_table_constraints().column_def_table_constraint(0));
+                var column = ExtractedColumnDefinition(ctx.column_def_table_constraints().column_def_table_constraint(0), target);
                 target.Alter(column);
             }
 
@@ -589,7 +590,7 @@ namespace TSQLAnalyzerLib.listeners
             }
             return (false, "");
         }
-        private ResolvedColumn ExtractedColumnDefinition(Column_def_table_constraintContext column) {
+        private ResolvedColumn ExtractedColumnDefinition(Column_def_table_constraintContext column,ResolvedTable tbl) {
             var colToken = column.children[0] as Column_definitionContext;
             var constraintToken = column.children[0] as Table_constraintContext;
             if (colToken is null && constraintToken is not null) { return null; }
@@ -608,7 +609,7 @@ namespace TSQLAnalyzerLib.listeners
             else {
                 dt = Extracted_Data_Type(colToken.data_type());
             }
-            return new ResolvedColumn(AsBaseToken(colToken), name, dt, nullability);
+            return new ResolvedColumn(AsBaseToken(colToken), name, dt, nullability,tbl);
         }
 
         private statementComponent.DataType Extracted_Data_Type(Data_typeContext dtc) {

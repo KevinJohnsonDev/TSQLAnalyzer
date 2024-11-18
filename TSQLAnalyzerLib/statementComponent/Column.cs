@@ -57,4 +57,31 @@
         public override string ToString() => $"{TokenText}:{Start}-{End}\n\tColumnName:{ColumnName}\n\tUsedAs:{UsedAs}\n\tOwnerID:{OwnerID}\n\tTable:{Table?.ToString()}";
 
     }
+
+    public class ResolvedColumn : Column,ITokenText {
+
+        public string ColumnName { get; init; }
+
+        public bool IsNullable { get; init; }
+
+        public ResolvedTable Table { get; set; }
+
+        public DataType SqlType { get; init; }
+        public ResolvedColumn(BaseToken token, string columnName, DataType sqlType, bool isNullable,ResolvedTable table):base(token,new StatementPosition()) {
+            ColumnName = columnName;
+            SqlType = sqlType;
+            IsNullable = isNullable;
+            Table = table;
+        }
+
+        public static ResolvedColumn FromDatabase(string columnName, DataType sqlType, bool isNullable,ResolvedTable table) {
+            return new ResolvedColumn(BaseToken.OnlineToken, columnName, sqlType, isNullable,table);
+        }
+
+        public SimpleColumn AsColumn() {
+            return new SimpleColumn(BaseToken.OnlineToken, Table?.TableName, ColumnName, new StatementPosition()) {
+                ResolvedColumn = this
+            };
+        }
+    }
 }
