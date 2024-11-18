@@ -178,12 +178,26 @@ namespace TSQLAnalyzerLib.listeners
 
         public override void ExitSelect_list_elem([NN] Select_list_elemContext context)
         {
-            if (context.expression_elem() is not null) {
-                var asAlias = context.expression_elem().as_column_alias();
-                var alias = context.expression_elem().column_alias();
-                string? aliasName =  asAlias?.column_alias().GetFullText() ?? alias?.GetFullText();
-                if (aliasName != null) { CurrentStatement.AppendAlias(aliasName); }
+            var ee = context.expression_elem();
+            if (ee is null) { return; }
+            var asAlias = ee.as_column_alias();
+            var alias = ee.column_alias();
+            string? aliasName =  asAlias?.column_alias().GetFullText() ?? alias?.GetFullText();
+            if(ee.expression() is not null) {
+                ExpressionContext exp = ee.expression();
+                if (exp.children[0] is Bracket_expressionContext bec) {
+                    /*bracket_expression: '(' expression ')'| '(' subquery ')'; */
+                    if (bec.children[1] is SubqueryContext sc) {
+                        var column = new DerivedColumn(
+                            AsBaseToken(context),
+                            (StatementPosition)_position.Clone(),
+                            CurrentStatement.Subqueries[^1]
+                            );
+                        CurrentStatement.AddDerivedColumn(column);
+                    }
+                }
             }
+            if (aliasName != null) { CurrentStatement.AppendAlias(aliasName); }
         }
 
         public override void EnterCase_expression([NN] Case_expressionContext context) => _caseExpressionDepth += 1;

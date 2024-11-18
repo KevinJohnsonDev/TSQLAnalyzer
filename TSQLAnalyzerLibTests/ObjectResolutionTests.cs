@@ -82,7 +82,16 @@ namespace TSQLAnalyzerLibTests {
                 Assert.IsTrue(sq.Columns.All((col) => col.Position.SubqueryDepth == 1));
             }
         }
-        
+
+        [TestMethod]
+       public void CorrelatedSubqueryInSelect_ResolvesNames() {
+            var input = @"
+                SELECT (SELECT B.ID FROM dbo.B AS B WHERE B.ID = D.ID) AS ID FROM dbo.B AS D";
+            SqlListener listener = TestMethods.Init(input);
+            var statement = listener.Statements[0];
+            Assert.IsTrue(statement.Columns[0].Alias == "ID");
+        }
+
         [TestMethod]       
         public void Subquery_MapsColumnsToCatalog() {
             var input = @"

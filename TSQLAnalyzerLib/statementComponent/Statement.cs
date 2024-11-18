@@ -146,23 +146,28 @@ namespace TSQLAnalyzerLib.statementComponent {
 
 
 
-        public void AddSimpleColumn(BaseToken token, string tableName, string columnName,StatementPosition position)
-        {
-            var col = new SimpleColumn(token, tableName, columnName,position);
+        public void AddSimpleColumn(BaseToken token, string tableName, string columnName,StatementPosition position) {
+            var col = new SimpleColumn(token, tableName, columnName, position);
 
-            if (CurrentSubquery is not null)
-            {
+            AddColumnToBuckets(col);
+        }
+        public void AddDerivedColumn(DerivedColumn derived) {
+            AddColumnToBuckets(derived);
+        }
+        private void AddColumnToBuckets(Column col) {
+            if (CurrentSubquery is not null) {
                 CurrentSubquery.Columns.Add(col);
                 CurrentSubquery.UnresolvedColumns.Add(col);
             }
-            else
-            {
+            else {
                 UnresolvedColumns.Add(col);
                 Columns.Add(col);
             }
 
             CurrentAliasable = col;
         }
+
+
 
         public void AppendAlias(string alias, bool usedAs = false)
         {

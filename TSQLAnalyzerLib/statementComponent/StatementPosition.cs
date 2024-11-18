@@ -19,7 +19,7 @@
             WhereDepth = 0;
         }
         public  object Clone() {
-            return this.MemberwiseClone();
+            return new StatementPosition(SelectDepth,SubqueryDepth,WhereDepth);
         }
 
         public override bool Equals(object? obj) {

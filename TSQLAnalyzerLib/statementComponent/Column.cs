@@ -1,4 +1,6 @@
-﻿namespace TSQLAnalyzerLib.statementComponent {
+﻿using System.Linq;
+
+namespace TSQLAnalyzerLib.statementComponent {
 
 
     public abstract class Column : ITokenText, IAliasable {
@@ -58,6 +60,16 @@
 
     }
 
+    public class DerivedColumn : Column, ITokenText {
+
+        public List<Column> ProjectdColumns { get; init; } = new();
+        public Subquery Subquery { get; init; }
+        public DerivedColumn(BaseToken token, StatementPosition postition, Subquery subquery) : base(token, postition) {
+            Subquery = subquery;
+            var cols = subquery.Columns.Where(c => c.Position.SelectDepth > c.Position.WhereDepth);
+            ProjectdColumns.AddRange(cols);
+        }
+    }
     public class ResolvedColumn : Column,ITokenText {
 
         public string ColumnName { get; init; }
