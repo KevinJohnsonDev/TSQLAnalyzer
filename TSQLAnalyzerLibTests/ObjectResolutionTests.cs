@@ -89,7 +89,11 @@ namespace TSQLAnalyzerLibTests {
                 SELECT (SELECT B.ID FROM dbo.B AS B WHERE B.ID = D.ID) AS ID FROM dbo.B AS D";
             SqlListener listener = TestMethods.Init(input);
             var statement = listener.Statements[0];
-            Assert.IsTrue(statement.Columns[0].Alias == "ID");
+            DerivedColumn dc = (DerivedColumn)statement.Columns[0];
+            Assert.IsTrue(dc.Alias == "ID");
+            Assert.IsTrue(dc.ProjectedColumns.Count == 1);
+            var sc = (SimpleColumn)(dc.ProjectedColumns[0]);
+            Assert.IsTrue(sc.ColumnName == "ID");
         }
 
         [TestMethod]       

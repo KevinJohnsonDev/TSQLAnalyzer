@@ -62,12 +62,13 @@ namespace TSQLAnalyzerLib.statementComponent {
 
     public class DerivedColumn : Column, ITokenText {
 
-        public List<Column> ProjectdColumns { get; init; } = new();
+        public List<Column> ProjectedColumns { get; init; } = new();
         public Subquery Subquery { get; init; }
         public DerivedColumn(BaseToken token, StatementPosition postition, Subquery subquery) : base(token, postition) {
             Subquery = subquery;
-            var cols = subquery.Columns.Where(c => c.Position.SelectDepth > c.Position.WhereDepth);
-            ProjectdColumns.AddRange(cols);
+            /*The plus 1 is for the column being in the select position of another select position*/
+            var cols = subquery.Columns.Where(c => c.Position.SelectDepth > c.Position.WhereDepth+1);
+            ProjectedColumns.AddRange(cols);
         }
     }
     public class ResolvedColumn : Column,ITokenText {

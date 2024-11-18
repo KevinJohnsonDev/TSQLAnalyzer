@@ -76,10 +76,6 @@ namespace TSQLAnalyzerLib.listeners
             _inWhere = true;
         }
 
-        public override void ExitTable_sources([NotNull] Table_sourcesContext context) {
-            _position.WhereDepth -= 1;
-            _inWhere = true;
-        }
 
 
         public override void ExitDml_clause([NotNull] Dml_clauseContext context)
@@ -94,6 +90,7 @@ namespace TSQLAnalyzerLib.listeners
 
         public override void ExitSelect_statement([NotNull] Select_statementContext context) {
             _position.SelectDepth -= 1;
+            _position.WhereDepth -= 1;
         }
 
         public override void ExitSelect_statement_standalone([NotNull] Select_statement_standaloneContext context) {
