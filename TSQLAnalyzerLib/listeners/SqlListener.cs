@@ -173,6 +173,10 @@ namespace TSQLAnalyzerLib.listeners
             base.ExitFull_column_name(context);
         }
 
+        public override void EnterSelect_list_elem([NotNull] Select_list_elemContext context) 
+        {
+            CurrentStatement.EnterSelectElement(AsBaseToken(context), (StatementPosition)_position.Clone());
+        }
         public override void ExitSelect_list_elem([NN] Select_list_elemContext context)
         {
             var ee = context.expression_elem();
@@ -194,6 +198,7 @@ namespace TSQLAnalyzerLib.listeners
                     }
                 }
             }
+            CurrentStatement.ExitSelectElement();
             if (aliasName != null) { CurrentStatement.AppendAlias(aliasName); }
         }
 

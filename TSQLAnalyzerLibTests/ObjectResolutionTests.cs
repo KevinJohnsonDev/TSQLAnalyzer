@@ -95,6 +95,22 @@ namespace TSQLAnalyzerLibTests {
             var sc = (SimpleColumn)(dc.ProjectedColumns[0]);
             Assert.IsTrue(sc.ColumnName == "ID");
         }
+        
+        [TestMethod]
+        public void CompoundColumn_ResolvesToSingleColumn() {
+            var input = @"
+                SELECT ISNULL(B.ID,B.Val) AS Col FROM dbo.B ";
+            SqlListener listener = TestMethods.Init(input);
+            var statement = listener.Statements[0];
+            CompoundColumn dc = (CompoundColumn)statement.Columns[0];
+            Assert.IsTrue(dc.Alias == "Col");
+            Assert.IsTrue(dc.Columns.Count == 2);
+            var sc = (SimpleColumn)(dc.Columns[0]);
+            Assert.IsTrue(sc.ColumnName == "ID");
+            var sc2 = (SimpleColumn)(dc.Columns[1]);
+            Assert.IsTrue(sc2.ColumnName == "Val");
+
+        }
 
         [TestMethod]       
         public void Subquery_MapsColumnsToCatalog() {

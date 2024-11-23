@@ -71,6 +71,28 @@ namespace TSQLAnalyzerLib.statementComponent {
             ProjectedColumns.AddRange(cols);
         }
     }
+
+    public class CompoundColumn: Column, ITokenText {
+        public List<Column> Columns { get; init; } = new();
+        public CompoundColumn(BaseToken token, StatementPosition postition,List<Column> columns) : base(token, postition) {
+            Columns = columns;
+        }
+    }
+
+    public class ColumnBuilder : Column, ITokenText {
+
+        public List<Column> Columns { get; init; } = new();
+        public ColumnBuilder(BaseToken token, StatementPosition postition) : base(token, postition) {
+
+        }
+
+        public Column? Resolve() {
+            if (Columns.Count == 0) { return null; }
+            if (Columns.Count == 1) { return Columns[0]; }
+            return new CompoundColumn(Token, Position, Columns);
+
+        }
+    }
     public class ResolvedColumn : Column,ITokenText {
 
         public string ColumnName { get; init; }

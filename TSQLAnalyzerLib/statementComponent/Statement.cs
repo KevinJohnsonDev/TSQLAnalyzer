@@ -62,6 +62,7 @@ namespace TSQLAnalyzerLib.statementComponent {
         public string FileName { get; init; } = "";
         public string DbContext { get; init; } = "";
 
+        private Stack<ColumnBuilder> PendingColumns { get; init; } = new();
         public BaseToken Token { get; init; }
         public string TokenText { get; init; }
         public int Start { get; init; }
@@ -155,14 +156,17 @@ namespace TSQLAnalyzerLib.statementComponent {
             AddColumnToBuckets(derived);
         }
         private void AddColumnToBuckets(Column col) {
-            if (CurrentSubquery is not null) {
-                CurrentSubquery.Columns.Add(col);
-                CurrentSubquery.UnresolvedColumns.Add(col);
+            var cur = CurrentSubquery ?? this;
+            if(cur.PendingColumns.Count == 0) {
+                cur.Columns.Add(col);
+                cur.UnresolvedColumns.Add(col);
+
             }
             else {
-                UnresolvedColumns.Add(col);
-                Columns.Add(col);
+                var pend = cur.PendingColumns.Peek();
+                pend.Columns.Add(col);
             }
+
 
             CurrentAliasable = col;
         }
@@ -277,7 +281,17 @@ namespace TSQLAnalyzerLib.statementComponent {
             if (dst == null) {sqlStatement.UnresolvedTables.Add(tbl);}
         }
 
+        public void EnterSelectElement(BaseToken token, StatementPosition position) {
+            var cur = CurrentSubquery ?? this;
+            cur.PendingColumns.Push(new ColumnBuilder(token, position));
+        }
 
+        public void ExitSelectElement() {
+            var cur = CurrentSubquery ?? this;
+            var pending = cur.PendingColumns.Pop().Resolve();
+            if (pending != null) { cur.AddColumnToBuckets(pending); }
+        }
+ 
 
         public void EnterSubquery(BaseToken token)
         {
