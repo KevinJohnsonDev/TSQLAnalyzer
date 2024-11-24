@@ -24,8 +24,8 @@ namespace TSQLAnalyzerLib.statementComponent {
     public class ConstantColumn : Column {
 
         public string Value { get; init; }
-        public ConstantColumn(BaseToken token, StatementPosition postition,string value):base(token, postition) {
-            Value = value;
+        public ConstantColumn(BaseToken token, StatementPosition postition):base(token, postition) {
+            Value = token.TokenText;
         }
     }
     public class SimpleColumn : Column {

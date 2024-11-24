@@ -97,7 +97,7 @@ namespace TSQLAnalyzerLibTests {
         }
         
         [TestMethod]
-        public void CompoundColumn_ResolvesToSingleColumn() {
+        public void MultipleColumnsInExpression_ResolvesToSingleColumn() {
             var input = @"
                 SELECT ISNULL(B.ID,B.Val) AS Col FROM dbo.B ";
             SqlListener listener = TestMethods.Init(input);
@@ -109,6 +109,22 @@ namespace TSQLAnalyzerLibTests {
             Assert.IsTrue(sc.ColumnName == "ID");
             var sc2 = (SimpleColumn)(dc.Columns[1]);
             Assert.IsTrue(sc2.ColumnName == "Val");
+
+        }
+
+        [TestMethod]
+        public void ColumnAndConstant_ResolvesToSingleColumn() {
+            var input = @"
+                SELECT ISNULL(B.ID,1) AS Col FROM dbo.B ";
+            SqlListener listener = TestMethods.Init(input);
+            var statement = listener.Statements[0];
+            CompoundColumn dc = (CompoundColumn)statement.Columns[0];
+            Assert.IsTrue(dc.Alias == "Col");
+            Assert.IsTrue(dc.Columns.Count == 2);
+            var sc = (SimpleColumn)(dc.Columns[0]);
+            Assert.IsTrue(sc.ColumnName == "ID");
+            var sc2 = (ConstantColumn)(dc.Columns[1]);
+            Assert.IsTrue(sc2.Value == "1");
 
         }
 

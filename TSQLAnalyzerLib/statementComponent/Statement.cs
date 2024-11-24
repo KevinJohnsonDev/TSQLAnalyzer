@@ -155,6 +155,10 @@ namespace TSQLAnalyzerLib.statementComponent {
         public void AddDerivedColumn(DerivedColumn derived) {
             AddColumnToBuckets(derived);
         }
+
+        public void AddConstantColumn(ConstantColumn c) {
+            AddColumnToBuckets(c);
+        }
         private void AddColumnToBuckets(Column col) {
             var cur = CurrentSubquery ?? this;
             if(cur.PendingColumns.Count == 0) {
@@ -291,7 +295,9 @@ namespace TSQLAnalyzerLib.statementComponent {
             var pending = cur.PendingColumns.Pop().Resolve();
             if (pending != null) { cur.AddColumnToBuckets(pending); }
         }
- 
+
+
+
 
         public void EnterSubquery(BaseToken token)
         {

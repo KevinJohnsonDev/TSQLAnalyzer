@@ -202,6 +202,10 @@ namespace TSQLAnalyzerLib.listeners
             if (aliasName != null) { CurrentStatement.AppendAlias(aliasName); }
         }
 
+        public override void EnterPrimitive_expression([NotNull] Primitive_expressionContext context) {
+            CurrentStatement.AddConstantColumn(new ConstantColumn(AsBaseToken(context), (StatementPosition)_position.Clone()));
+        }
+
         public override void EnterCase_expression([NN] Case_expressionContext context) => _caseExpressionDepth += 1;
         public override void ExitCase_expression([NN] Case_expressionContext context) => _caseExpressionDepth -= 1;
         public override void EnterSubquery([NotNull] SubqueryContext context) {
