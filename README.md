@@ -35,7 +35,7 @@ The core of these libraries is still in progress and the console program will be
 
 # Planned Features
 
-- Derived Table (Subquery) Name Resolution
+- ~~Derived Table (Subquery) Name Resolution~~
 - Temp Table Name Resolution
 - Table and Column Usage Analysis that can recommend filtered indexes
 
