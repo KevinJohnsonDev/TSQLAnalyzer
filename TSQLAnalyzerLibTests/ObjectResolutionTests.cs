@@ -22,7 +22,7 @@ namespace TSQLAnalyzerLibTests {
             var statement = listener.Statements[1];
             Assert.IsTrue(statement.Tables.Where((table) => table.ResolvedTable is not null).Count() == 1);
             Assert.IsTrue(statement.Columns.All((x) => x is SimpleColumn));
-            Assert.IsTrue(statement.Columns.Where((col) => col is SimpleColumn sc && sc.ResolvedColumn is not null).Count() == 3);
+            Assert.IsTrue(statement.Columns.Where((col) => col is SimpleColumn sc && sc.Table is not null).Count() == 3);
 
         }
         [TestMethod]
@@ -41,16 +41,16 @@ namespace TSQLAnalyzerLibTests {
             var resolvedTables = statement.Tables.Where((table) => table.ResolvedTable is not null).ToList();
             var resolvedColumns =
                 statement.Columns
-                .Where(col => col is SimpleColumn sc && sc.ResolvedColumn is not null)
+                .Where(col => col is SimpleColumn sc && sc.Table is not null)
                 .OrderBy((col) => col.Start).ToArray();
 
             Assert.IsTrue(resolvedTables.Count == 2);
             Assert.IsTrue(resolvedColumns.Count() == 5);
-            Assert.IsTrue(resolvedColumns[0] is SimpleColumn sc  && sc?.ResolvedColumn.Table == cTable);
-            Assert.IsTrue(resolvedColumns[1] is SimpleColumn sc1  && sc1?.ResolvedColumn.Table == bTable);
-            Assert.IsTrue(resolvedColumns[2] is SimpleColumn sc2  && sc2?.ResolvedColumn.Table == bTable);
-            Assert.IsTrue(resolvedColumns[3] is SimpleColumn sc3  && sc3?.ResolvedColumn.Table == cTable);
-            Assert.IsTrue(resolvedColumns[4] is SimpleColumn sc4  && sc4?.ResolvedColumn.Table == bTable);
+            Assert.IsTrue(resolvedColumns[0] is SimpleColumn sc  && sc?.Table == cTable);
+            Assert.IsTrue(resolvedColumns[1] is SimpleColumn sc1  && sc1?.Table == bTable);
+            Assert.IsTrue(resolvedColumns[2] is SimpleColumn sc2  && sc2?.Table == bTable);
+            Assert.IsTrue(resolvedColumns[3] is SimpleColumn sc3  && sc3?.Table == cTable);
+            Assert.IsTrue(resolvedColumns[4] is SimpleColumn sc4  && sc4?.Table == bTable);
 
 
         }
@@ -145,7 +145,7 @@ namespace TSQLAnalyzerLibTests {
             var statement = listener.Statements[1];
             var resolvedTables = statement.Tables.Where((table) =>  table.Columns.Count > 0).ToList();
             var resolvedColumns = statement.Columns
-                .Where((col) => col is SimpleColumn sc && sc.ResolvedColumn is not null)
+                .Where((col) => col is SimpleColumn sc && sc.Table is not null)
                 .OrderBy((col) => col.Start)
                 .ToArray();
 ;
@@ -188,7 +188,7 @@ namespace TSQLAnalyzerLibTests {
             var statement = listener.Statements[1];
             var resolvedTables = statement.Tables.Where((table) => table.Columns.Count > 0).ToList();
             var resolvedColumns = statement.Columns
-                .Where((col) => col is SimpleColumn sc && sc.ResolvedColumn is not null)
+                .Where((col) => col is SimpleColumn sc && sc.Table is not null)
                 .OrderBy((col) => col.Start)
                 .ToArray();
             ;
@@ -226,12 +226,12 @@ namespace TSQLAnalyzerLibTests {
             var statement = listener.Statements[2];
             var resolvedCtes = statement.CTEs.Where((table) => table.Columns.Count > 0).ToList();
             var resolvedColumns = statement.Columns.OfType<SimpleColumn>()
-                .Where((col) => col.ResolvedColumn is not null)
+                .Where((col) => col.Table is not null)
                 .OrderBy((col) => col.Start)
                 .ToArray();
             Assert.IsTrue(resolvedCtes.Count == 1);
             Assert.IsTrue(resolvedColumns.Length > 0);
-            Assert.IsTrue(resolvedColumns[0]?.ResolvedColumn.Table.TableName == "T");
+            Assert.IsTrue(resolvedColumns[0]?.Table.TableName == "T");
 
         }
 
@@ -253,12 +253,12 @@ namespace TSQLAnalyzerLibTests {
             var statement = listener.Statements[2];
             var resolvedCtes = statement.CTEs.Where((table) => table.Columns.Count > 0).ToList();
             var resolvedColumns = statement.Columns.OfType<SimpleColumn>()
-                .Where((col) => col.ResolvedColumn is not null)
+                .Where((col) => col.Table is not null)
                 .OrderBy((col) => col.Start)
                 .ToArray();
             Assert.IsTrue(resolvedCtes.Count == 2);
             Assert.IsTrue(resolvedColumns.Length > 0);
-            Assert.IsTrue(resolvedColumns[0]?.ResolvedColumn.Table.TableName == "T");
+            Assert.IsTrue(resolvedColumns[0]?.Table?.TableName == "T");
 
         }
 
@@ -276,12 +276,12 @@ namespace TSQLAnalyzerLibTests {
             var statement = listener.Statements[2];
             var resolvedCtes = statement.CTEs.Where((table) => table.Columns.Count > 0).ToList();
             var resolvedColumns = statement.Columns.OfType<SimpleColumn>()
-                .Where((col) => col.ResolvedColumn is not null)
+                .Where((col) => col.Table is not null)
                 .OrderBy((col) => col.Start)
                 .ToArray();
             Assert.IsTrue(resolvedCtes.Count == 1);
             Assert.IsTrue(resolvedColumns.Length > 0);
-            Assert.IsTrue(resolvedColumns[0]?.ResolvedColumn?.Table.TableName == "T");
+            Assert.IsTrue(resolvedColumns[0]?.Table?.TableName == "T");
 
         }
 
@@ -299,12 +299,12 @@ namespace TSQLAnalyzerLibTests {
             var statement = listener.Statements[2];
             var resolvedCtes = statement.CTEs.Where((table) => table.Columns.Count > 0).ToList();
             var resolvedColumns = statement.Columns.OfType<SimpleColumn>()
-                .Where((col) => col.ResolvedColumn is not null)
+                .Where((col) => col.Table is not null)
                 .OrderBy((col) => col.Start)
                 .ToArray();
             Assert.IsTrue(resolvedCtes.Count == 1);
             Assert.IsTrue(resolvedColumns.Length > 0);
-            Assert.IsTrue(resolvedColumns[0]?.ResolvedColumn?.Table.TableName == "T");
+            Assert.IsTrue(resolvedColumns[0]?.Table?.TableName == "T");
 
 
 
@@ -315,7 +315,7 @@ namespace TSQLAnalyzerLibTests {
 
         var resolvedInnerColumns = statement.Subqueries[idx].Columns
             .OfType<SimpleColumn>()
-            .Where((col) => col.ResolvedColumn is not null)
+            .Where((col) => col.Table is not null)
             .OrderBy((col) => col.Start)
             .ToArray();
 
@@ -324,7 +324,7 @@ namespace TSQLAnalyzerLibTests {
 
         var deepInnerColumns = statement.Subqueries[idx].Subqueries[0].Columns
             .OfType<SimpleColumn>()
-            .Where((col) => col.ResolvedColumn is not null)
+            .Where((col) => col.Table is not null)
             .OrderBy((col) => col.Start)
             .ToArray();
 

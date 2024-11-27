@@ -212,31 +212,31 @@ namespace TSQLAnalyzerLib.statementComponent {
             foreach (SimpleColumn col in statement.UnresolvedColumns.Where((x) => x is SimpleColumn))
             {
                 foreach (Table table in statement.Tables.Where((table)=> table.Columns is not null)) {
-                    if (col.ResolvedColumn is not null) { break; }
+                    if (col.Table is not null) { break; }
                     TryMapColumnToTable(col, table);
                 }
                 foreach(DerivedTable table in CTEs) {
-                    if(col.ResolvedColumn is not null) { break; }
+                    if(col.Table is not null) { break; }
                     TryMapColumnToTable(col, table);
                 }
 
 
 
             }
-            statement.UnresolvedColumns.RemoveAll(col => col is SimpleColumn sc && sc.ResolvedColumn is not null);
+            statement.UnresolvedColumns.RemoveAll(col => col is SimpleColumn sc && sc.Table is not null);
         }
 
         private static void TryMapColumnToTable(SimpleColumn col, Table table) {
             IEnumerable<SimpleColumn> sc = table.Columns.OfType<SimpleColumn>();
-            ResolvedColumn? tableCol = sc.FirstOrDefault((tableCol) => tableCol is SimpleColumn sc && sc.ColumnName == col.ColumnName)?.ResolvedColumn;
+            SimpleColumn? tableCol = sc.FirstOrDefault((tableCol) => tableCol is SimpleColumn sc && sc.ColumnName == col.ColumnName);
             if (tableCol is null) { return ; }
             if (String.IsNullOrWhiteSpace(col.OwnerID)) { return; }
             if (col.OwnerID == table.Alias) {
-                col.ResolvedColumn = tableCol;
+                col.Assign(tableCol);
                 return;
             }
             if (col.OwnerID == table.TableName && table.Alias == "") {
-                col.ResolvedColumn = tableCol;
+                col.Assign(tableCol);
                 return;
             }
         }

@@ -30,19 +30,16 @@ namespace TSQLAnalyzerLib.statementComponent {
     }
     public class SimpleColumn : Column {
 
-        private ResolvedColumn? resolvedColumn = null;
-        public ResolvedColumn? ResolvedColumn {
-            get { return resolvedColumn; }
-            set {
-                if (resolvedColumn is not null) { throw new InvalidOperationException("Cannot Reassign Resolved Table"); }
-                resolvedColumn = value ?? throw new ArgumentNullException(nameof(value));
-                Table = resolvedColumn.Table;
-            }
-        }
+        
+        public DataType SqlType { get; set; }
+        public bool IsNullable { get; set; }
+
+        public string CatalogName { get; set; }
 
         public string ColumnName { get; init; }
 
-        /* This references the fully resolved table post parse */
+        /* This
+         * preferences the fully resolved table post parse */
         public ResolvedTable? Table { get; set; }
 
         /* This represents either the table OR the named table expression that this column references during parseTime */
@@ -58,6 +55,17 @@ namespace TSQLAnalyzerLib.statementComponent {
 
         public override string ToString() => $"{TokenText}:{Start}-{End}\n\tColumnName:{ColumnName}\n\tUsedAs:{UsedAs}\n\tOwnerID:{OwnerID}\n\tTable:{Table?.ToString()}";
 
+        public void Assign(ResolvedColumn rc) {
+            Table = rc.Table;
+            SqlType = rc.SqlType;
+            CatalogName = rc.ColumnName;
+        }
+
+        public void Assign(SimpleColumn sc) {
+            Table = sc.Table;
+            SqlType = sc.SqlType;
+            CatalogName = sc.ColumnName;
+        }
     }
 
     public class DerivedColumn : Column, ITokenText {
@@ -114,9 +122,9 @@ namespace TSQLAnalyzerLib.statementComponent {
         }
 
         public SimpleColumn AsColumn() {
-            return new SimpleColumn(BaseToken.OnlineToken, Table?.TableName, ColumnName, new StatementPosition()) {
-                ResolvedColumn = this
-            };
+            var sc = new SimpleColumn(BaseToken.OnlineToken, Table?.TableName, ColumnName, new StatementPosition());
+                sc.Assign(this);
+            return sc;
         }
     }
 }
