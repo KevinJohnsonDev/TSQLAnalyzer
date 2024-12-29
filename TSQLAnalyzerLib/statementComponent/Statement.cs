@@ -190,16 +190,13 @@ namespace TSQLAnalyzerLib.statementComponent {
             Predicates.Add(pred);
         }
 
-        public void Resolve(Catalog catalog)
-        {
+        public void Resolve(Catalog catalog) {
             Dictionary<Column, List<ResolvedColumn>> potentials = new();
             List<Table> remainingTables = new();
             List<Column> remainingColumns = new();
-            foreach (Table table in UnresolvedTables)
-            {
+            foreach (Table table in UnresolvedTables) {
                 ResolvedTable? dst = catalog.Seek(table.Id);
-                if (dst is null)
-                {
+                if (dst is null) {
                     remainingTables.Add(table);
                     continue;
                 }
@@ -209,20 +206,26 @@ namespace TSQLAnalyzerLib.statementComponent {
             UnresolvedTables.AddRange(remainingTables);
 
             Statement statement = CurrentSubquery ?? this;
-            foreach (SimpleColumn col in statement.UnresolvedColumns.Where((x) => x is SimpleColumn))
-            {
-                foreach (Table table in statement.Tables.Where((table)=> table.Columns is not null)) {
+            List<SimpleColumn> columns = statement.UnresolvedColumns.OfType<SimpleColumn>().ToList();
+            ResolveColumns(statement, columns);
+            foreach(Subquery s in statement.Subqueries) {
+                List<SimpleColumn> cols = s.UnresolvedColumns.OfType<SimpleColumn>().ToList();
+                ResolveColumns(s, cols);
+            }
+        }
+
+        private void ResolveColumns(Statement statement,List<SimpleColumn> unresolved) {
+            foreach (SimpleColumn col in unresolved) {
+                foreach (Table table in statement.Tables.Where((table) => table.Columns is not null)) {
                     if (col.Table is not null) { break; }
                     TryMapColumnToTable(col, table);
                 }
-                foreach(DerivedTable table in CTEs) {
-                    if(col.Table is not null) { break; }
+                foreach (DerivedTable table in CTEs) {
+                    if (col.Table is not null) { break; }
                     TryMapColumnToTable(col, table);
                 }
-
-
-
             }
+            if(statement is Subquery s) { ResolveColumns(s.parent, unresolved); }
             statement.UnresolvedColumns.RemoveAll(col => col is SimpleColumn sc && sc.Table is not null);
         }
 

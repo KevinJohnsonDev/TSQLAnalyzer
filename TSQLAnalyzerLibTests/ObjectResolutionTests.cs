@@ -95,7 +95,24 @@ namespace TSQLAnalyzerLibTests {
             var sc = (SimpleColumn)(dc.ProjectedColumns[0]);
             Assert.IsTrue(sc.ColumnName == "ID");
         }
-        
+
+        [TestMethod]
+        public void CorrelatedSubqueryInSelect_ResolvesOuterScopeNames() {
+            var input = @"
+                CREATE TABLE dbo.B( ID INT NOT NULL PRIMARY KEY);
+                GO
+                SELECT (SELECT B.ID FROM dbo.B AS B WHERE B.ID = D.ID) AS ID FROM dbo.B AS D";
+            SqlListener listener = TestMethods.Init(input);
+            var statement = listener.Statements[1];
+            var sub = statement.Subqueries[0];
+
+            SimpleColumn sc = (SimpleColumn)sub.Columns[2];
+            Assert.IsTrue(sc.ColumnName == "ID");
+            Assert.IsTrue(sc.OwnerID == "D");
+            Assert.IsTrue(sc.Table is not null);
+            Assert.IsTrue(sc.Table.TableName == "B");
+        }
+
         [TestMethod]
         public void MultipleColumnsInExpression_ResolvesToSingleColumn() {
             var input = @"
