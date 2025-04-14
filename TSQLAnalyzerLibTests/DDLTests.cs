@@ -152,5 +152,32 @@ namespace TSQLAnalyzerLibTests
             Assert.IsTrue(dt.BaseType == SqlDataTypes.CHAR);
             Assert.IsTrue(dt.Precision == 22);
         }
+
+        [TestMethod]
+        public void TempTablesGosIntoCatalog() {
+            var query = @"
+            CREATE TABLE #Temp(ID INT NOT NULL);";
+            var result = TestMethods.Init(query);
+            var catalog = result.DbCatalog;
+            var table = catalog.Tables[0];
+
+            Assert.IsTrue(table.Schema == "dbo");
+            Assert.IsTrue(table.TableName == "#Temp");
+            Assert.IsTrue(table.Columns.Count == 1);
+            Assert.IsTrue(table.Columns[0].ColumnName == "ID");
+            Assert.IsTrue(table.Columns[0].SqlType.BaseType == SqlDataTypes.INT);
+            Assert.IsTrue(table.Columns[0].IsNullable == false);
+            Assert.IsTrue(table.Database == "tempdb");
+        }
+
+        [TestMethod]
+        public void DroppingTableMakesItLeaveCatalog() {
+            var query = @"
+            CREATE TABLE dbo.Temp(ID INT NOT NULL);
+            GO
+            DROP TABLE IF EXISTS dbo.Temp";
+            var result = TestMethods.Init(query);
+            Assert.IsTrue(result.DbCatalog.Tables.Count == 0);
+        }
     }
 }

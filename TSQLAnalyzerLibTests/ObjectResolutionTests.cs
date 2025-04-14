@@ -372,7 +372,7 @@ namespace TSQLAnalyzerLibTests {
 
         }
         [TestMethod]
-        public void Assignment_In_Top_Level_Select_As_Alias() {
+        public void AssignmentInTopLevelSelectAsAlias() {
             var input = @"
                 USE Sample_DB
                 GO
@@ -396,6 +396,9 @@ namespace TSQLAnalyzerLibTests {
             Assert.IsTrue(columns[2].ColumnName == "ActionDate");
             Assert.IsTrue(columns[0].Table == table);
         }
+
+
+
 
 
     }

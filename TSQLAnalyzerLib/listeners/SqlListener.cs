@@ -473,7 +473,8 @@ namespace TSQLAnalyzerLib.listeners
            var db = nameToken.database?.GetText() ?? DB;
            var schema = nameToken.schema?.GetText() ?? "dbo";
            var tableName = nameToken.table.GetText();
-           var columns = new List<ResolvedColumn>();
+           if (tableName.StartsWith("#")) {  db= "tempdb"; }
+            var columns = new List<ResolvedColumn>();
            string? pkName = null;
             ResolvedColumn? pkCol = null;
             var table = new ResolvedTable(AsBaseToken(ctx), db, schema, tableName, columns);
@@ -506,6 +507,17 @@ namespace TSQLAnalyzerLib.listeners
             if (pkCol is not null) { table.SetPrimaryKey(pkCol, pkName); }
             DbCatalog.Add(table);
 
+        }
+
+        public override void EnterDrop_table([NotNull] Drop_tableContext context) {
+            var nameToken = context.GetChild<Table_nameContext>(0);
+            var db = nameToken.database?.GetText() ?? DB;
+            var schema = nameToken.schema?.GetText() ?? "dbo";
+            var tableName = nameToken.table.GetText();
+            var table = DbCatalog.Seek(db, schema, tableName);
+            if(table is not null) {
+                DbCatalog.Drop(table,CurrentStatement);
+            }
         }
 
         public override void EnterAlter_table([NN] Alter_tableContext ctx) {

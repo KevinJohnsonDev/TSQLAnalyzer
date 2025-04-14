@@ -2,6 +2,8 @@
     public class Catalog
     {
 
+
+        public List<Statement> PossiblyInvalidDrops { get; init; } = new();
         public List<ResolvedTable> Tables { get; init; }
         public Catalog()
         {
@@ -44,6 +46,14 @@
         public void Add(ResolvedTable table)
         {
             Tables.Add(table);
+        }
+
+        public void Drop( ResolvedTable table, Statement statement, bool ignoreNotExistErrors = false) {
+            if (Tables.Contains(table)) {
+                Tables.Remove(table);
+                return;
+            }
+            if (!ignoreNotExistErrors) {PossiblyInvalidDrops.Add(statement);}
         }
 
     }
