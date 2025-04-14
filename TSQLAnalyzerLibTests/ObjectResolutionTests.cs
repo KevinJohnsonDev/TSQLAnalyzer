@@ -371,6 +371,32 @@ namespace TSQLAnalyzerLibTests {
 
 
         }
+        [TestMethod]
+        public void Assignment_In_Top_Level_Select_As_Alias() {
+            var input = @"
+                USE Sample_DB
+                GO
+                SELECT BID = B.ID,
+                       BAY = B.ActionBy,
+                       BAD = B.ActionDate 
+                FROM dbo.B;";
+
+            SqlListener listener = TestMethods.Init(input, MockTables());
+            var table = listener.DbCatalog.Seek("Sample_DB", "dbo", "B");
+            var statement = listener.Statements[1];
+            Assert.IsTrue(statement.Tables.Where((table) => table.ResolvedTable is not null).Count() == 1);
+            Assert.IsTrue(statement.Columns.All((x) => x is SimpleColumn));
+            var columns = statement.Columns.OfType<SimpleColumn>().ToArray();
+            Assert.IsTrue(statement.Columns.Where((col) => col is SimpleColumn sc && sc.Table is not null).Count() == 3);
+            Assert.IsTrue(statement.Columns[0].Alias == "BID");
+            Assert.IsTrue(statement.Columns[1].Alias == "BAY");
+            Assert.IsTrue(statement.Columns[2].Alias == "BAD");
+            Assert.IsTrue(columns[0].ColumnName == "ID");
+            Assert.IsTrue(columns[1].ColumnName == "ActionBy");
+            Assert.IsTrue(columns[2].ColumnName == "ActionDate");
+            Assert.IsTrue(columns[0].Table == table);
+        }
+
 
     }
 }
