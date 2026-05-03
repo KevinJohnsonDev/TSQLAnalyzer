@@ -233,14 +233,21 @@ namespace TSQLAnalyzerLib.statementComponent {
             IEnumerable<SimpleColumn> sc = table.Columns.OfType<SimpleColumn>();
             SimpleColumn? tableCol = sc.FirstOrDefault((tableCol) => tableCol is SimpleColumn sc && sc.ColumnName == col.ColumnName);
             if (tableCol is null) { return ; }
-            if (String.IsNullOrWhiteSpace(col.OwnerID)) { return; }
-            if (col.OwnerID == table.Alias) {
-                col.Assign(tableCol);
-                return;
+
+            // Handle qualified columns
+            if (!String.IsNullOrWhiteSpace(col.OwnerID)) {
+                if (col.OwnerID == table.Alias) {
+                    col.Assign(tableCol);
+                    return;
+                }
+                if (col.OwnerID == table.TableName && table.Alias == "") {
+                    col.Assign(tableCol);
+                    return;
+                }
             }
-            if (col.OwnerID == table.TableName && table.Alias == "") {
+            else {
+                // Handle unqualified columns - assign if column exists in this table
                 col.Assign(tableCol);
-                return;
             }
         }
 

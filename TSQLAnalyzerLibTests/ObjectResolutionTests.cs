@@ -242,8 +242,66 @@ namespace TSQLAnalyzerLibTests {
         }
 
 
+        [TestMethod]
+        public void ScopeUniqueTableColumns_MapsToCatalog() {
+            var input = @"
+                USE Sample_DB
+                GO
+                CREATE TABLE dbo.T(TID INT );
+                CREATE TABLE dbo.T2(ID INT,TID INT );
+                GO
+                SELECT ID, T.TID FROM dbo.T JOIN dbo.T2 ON T2.TID = T.TID";
+            SqlListener listener = TestMethods.Init(input);
+            var statement = listener.Statements[3];
+            var columns = statement.Columns.OfType<SimpleColumn>().Where((col) => col.Table is not null).ToArray();
+            Assert.IsTrue(columns.Length ==4);
+            Assert.IsTrue(columns[0]?.Table?.TableName == "T2");
+            Assert.IsTrue(columns[1]?.Table?.TableName == "T");
+            Assert.IsTrue(columns[2]?.Table?.TableName == "T2");
+            Assert.IsTrue(columns[3]?.Table?.TableName == "T");
+        }
 
         
+            [TestMethod]
+        public void CrossApply_MapsToCatalog() {
+            var input = @"
+                USE Sample_DB
+                GO
+                CREATE TABLE dbo.T(ID INT );
+                CREATE TABLE dbo.T2(ID INT,TID INT );
+                GO
+                SELECT T.ID, T3.ID 
+                FROM dbo.T 
+                CROSS APPLY (SELECT ID FROM dbo.T2 WHERE T2.TID = T.ID) AS T3
+            ";
+            SqlListener listener = TestMethods.Init(input); 
+            var statement = listener.Statements[3];
+            var topCols = statement.Columns.OfType<SimpleColumn>().Where((col) => col.Table is not null).ToArray();
+            Assert.IsTrue(topCols.Length == 2);
+            Assert.IsTrue(topCols[0]?.Table?.TableName == "T");
+            Assert.IsTrue(topCols[1]?.Table?.TableName == "T2");
+
+
+            Assert.IsTrue(statement.Subqueries.Count == 1);
+            Subquery sub = statement.Subqueries[0];
+            List<Column> columns = sub.Columns;
+
+            Assert.IsTrue(columns.Count == 3);
+            AssertIsSimpleColumnForTable(columns[0], "T2");
+            AssertIsSimpleColumnForTable(columns[1], "T2");
+            AssertIsSimpleColumnForTable(columns[2], "T");
+
+
+        } 
+
+        private void AssertIsSimpleColumnForTable(Column c, String TableName) {
+            Assert.IsTrue(c is not null);
+            Assert.IsTrue(c is SimpleColumn);
+            SimpleColumn col = (SimpleColumn)c;
+            Assert.IsTrue(col.Table is not null);
+            Assert.IsTrue(col.Table.TableName == TableName);
+        }
+
         [TestMethod]
         public void CTE_MapsToCatalog() {
             var input = @"
@@ -264,7 +322,7 @@ namespace TSQLAnalyzerLibTests {
                 .ToArray();
             Assert.IsTrue(resolvedCtes.Count == 1);
             Assert.IsTrue(resolvedColumns.Length > 0);
-            Assert.IsTrue(resolvedColumns[0]?.Table.TableName == "T");
+            Assert.IsTrue(resolvedColumns[0]?.Table?.TableName == "T");
 
         }
 

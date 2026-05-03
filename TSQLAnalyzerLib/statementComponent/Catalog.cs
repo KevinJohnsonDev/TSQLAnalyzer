@@ -1,4 +1,6 @@
-﻿namespace TSQLAnalyzerLib.statementComponent {
+﻿using System.Text;
+
+namespace TSQLAnalyzerLib.statementComponent {
     public class Catalog
     {
 
@@ -48,12 +50,21 @@
             Tables.Add(table);
         }
 
-        public void Drop( ResolvedTable table, Statement statement, bool ignoreNotExistErrors = false) {
+        public void Drop(ResolvedTable table, Statement statement, bool ignoreNotExistErrors = false) {
             if (Tables.Contains(table)) {
                 Tables.Remove(table);
                 return;
             }
-            if (!ignoreNotExistErrors) {PossiblyInvalidDrops.Add(statement);}
+            if (!ignoreNotExistErrors) { PossiblyInvalidDrops.Add(statement); }
+        }
+
+        public override string ToString() {
+            StringBuilder builder = new();
+            builder.Append($"Catalog contains {Tables.Count} tables:\n");
+            foreach (var table in Tables) {
+                builder.AppendLine(table.ToString());
+            }
+            return builder.ToString();
         }
 
     }

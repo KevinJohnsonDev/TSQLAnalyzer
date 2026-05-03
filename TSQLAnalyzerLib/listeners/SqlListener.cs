@@ -172,6 +172,10 @@ namespace TSQLAnalyzerLib.listeners
             if (parts.Length >= 2) {
                 CurrentStatement.AddSimpleColumn(AsBaseToken(context), parts[parts.Length - 2], parts[parts.Length - 1],(StatementPosition)_position.Clone());
             }
+            else if (parts.Length == 1) {
+                // Handle unqualified column names (no table qualifier)
+                CurrentStatement.AddSimpleColumn(AsBaseToken(context), "", parts[0],(StatementPosition)_position.Clone());
+            }
             base.ExitFull_column_name(context);
         }
 
