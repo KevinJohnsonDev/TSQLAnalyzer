@@ -128,6 +128,22 @@ namespace TSQLAnalyzerLibTests {
             Assert.IsTrue(sc2.ColumnName == "Val");
 
         }
+        [TestMethod]
+        public void AliasEqualsExpressionSyntax_ResolvesForSingleColumn() {
+            var input = @"
+                SELECT Col = ISNULL(B.ID,B.Val) FROM dbo.B ";
+            SqlListener listener = TestMethods.Init(input);
+            var statement = listener.Statements[0];
+            CompoundColumn dc = (CompoundColumn)statement.Columns[0];
+
+            Assert.IsTrue(dc.Alias == "Col");
+            Assert.IsTrue(dc.Columns.Count == 2);
+            var sc = (SimpleColumn)(dc.Columns[0]);
+            Assert.IsTrue(sc.ColumnName == "ID");
+            var sc2 = (SimpleColumn)(dc.Columns[1]);
+            Assert.IsTrue(sc2.ColumnName == "Val");
+
+        }
 
         [TestMethod]
         public void ColumnAndConstant_ResolvesToSingleColumn() {
